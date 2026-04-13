@@ -1,17 +1,22 @@
-import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionCommandContext, ExtensionContext } from "@mariozechner/pi-coding-agent";
 
-import { resolveDraftPath, removeDraftFile, overwriteDraftFile, updateDraftFile } from "./storage.js";
+import {
+  createDraftPersistenceManager,
+  overwriteDraftFile,
+  resolveDraftPath,
+} from "./storage.js";
 import type { QuestionnaireDefinition, QuestionnaireRunResult } from "./types.js";
-import { createSubmissionPayload, formatSubmissionMessage, validateQuestionnaireDefinition } from "./types.js";
-import { QuestionnaireComponent, type QuestionnaireUiResult } from "./ui.js";
+import { createSubmissionPayload, validateQuestionnaireDefinition } from "./types.js";
+import { QuestionnaireComponent, type PersistOptions, type QuestionnaireUiResult } from "./ui.js";
 
 export interface RunQuestionnaireOptions {
   definition: QuestionnaireDefinition;
   draftPath?: string;
+  debounceMs?: number;
 }
 
 export async function runQuestionnaire(
-  ctx: Pick<ExtensionCommandContext, "cwd" | "ui">,
+  ctx: Pick<ExtensionCommandContext | ExtensionContext, "cwd" | "ui">,
   options: RunQuestionnaireOptions,
 ): Promise<QuestionnaireRunResult> {
   const { definition } = options;
@@ -21,41 +26,49 @@ export async function runQuestionnaire(
   let answers: Record<string, string> = {};
 
   overwriteDraftFile(draftPath, definition, answers);
-
-  const result = await ctx.ui.custom<QuestionnaireUiResult>((tui, theme, _keybindings, done) => {
-    return new QuestionnaireComponent(
-      tui,
-      theme,
-      definition,
-      answers,
-      (nextAnswers) => {
-        answers = { ...nextAnswers };
-        updateDraftFile(draftPath, definition, answers);
-      },
-      done,
-    );
+  const persistence = createDraftPersistenceManager({
+    filePath: draftPath,
+    definition,
+    debounceMs: options.debounceMs,
   });
 
-  if (result.status === "cancelled") {
+  try {
+    const result = await ctx.ui.custom<QuestionnaireUiResult>((tui, theme, _keybindings, done) => {
+      return new QuestionnaireComponent(
+        tui,
+        theme,
+        definition,
+        answers,
+        (nextAnswers, persistOptions?: PersistOptions) => {
+          answers = { ...nextAnswers };
+          if (persistOptions?.flush) {
+            persistence.flush(answers);
+            return;
+          }
+          persistence.schedule(answers);
+        },
+        done,
+      );
+    });
+
     answers = { ...result.answers };
-    updateDraftFile(draftPath, definition, answers);
+    persistence.flush(answers);
+
+    if (result.status === "cancelled") {
+      return {
+        status: "cancelled",
+        draftPath,
+        answers,
+      };
+    }
+
     return {
-      status: "cancelled",
+      status: "submitted",
       draftPath,
       answers,
+      payload: createSubmissionPayload(definition, answers),
     };
+  } finally {
+    persistence.dispose();
   }
-
-  answers = { ...result.answers };
-  const payload = createSubmissionPayload(definition, answers);
-  const message = formatSubmissionMessage(payload);
-  removeDraftFile(draftPath);
-
-  return {
-    status: "submitted",
-    draftPath,
-    answers,
-    payload,
-    message,
-  };
 }

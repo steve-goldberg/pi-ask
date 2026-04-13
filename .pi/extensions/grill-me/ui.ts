@@ -32,6 +32,10 @@ export interface QuestionnaireUiResult {
   answers: QuestionnaireAnswers;
 }
 
+export interface PersistOptions {
+  flush?: boolean;
+}
+
 export function createQuestionnaireUiState(
   definition: QuestionnaireDefinition,
   answers: QuestionnaireAnswers = {},
@@ -182,12 +186,12 @@ export class QuestionnaireComponent implements Component, Focusable {
     private readonly theme: Theme,
     private readonly definition: QuestionnaireDefinition,
     initialAnswers: QuestionnaireAnswers,
-    private readonly onPersist: (answers: QuestionnaireAnswers) => void,
+    private readonly onPersist: (answers: QuestionnaireAnswers, options?: PersistOptions) => void,
     private readonly onDone: (result: QuestionnaireUiResult) => void,
   ) {
     this.state = createQuestionnaireUiState(definition, initialAnswers);
     this.input.setValue(this.currentAnswer());
-    this.onPersist(this.state.answers);
+    this.onPersist(this.state.answers, { flush: true });
   }
 
   get focused(): boolean {
@@ -225,9 +229,13 @@ export class QuestionnaireComponent implements Component, Focusable {
     return this.state.answers[question.id] ?? "";
   }
 
-  private syncInputToState(): void {
+  private syncInputToState(options?: PersistOptions): void {
     this.state = withAnswer(this.definition, this.state, this.input.getValue());
-    this.onPersist(this.state.answers);
+    this.onPersist(this.state.answers, options);
+  }
+
+  private persistCurrentState(options?: PersistOptions): void {
+    this.onPersist(this.state.answers, options);
   }
 
   private loadCurrentAnswerIntoInput(): void {
@@ -236,13 +244,13 @@ export class QuestionnaireComponent implements Component, Focusable {
 
   private handleQuestionInput(data: string): void {
     if (matchesKey(data, Key.escape)) {
-      this.syncInputToState();
+      this.syncInputToState({ flush: true });
       this.onDone({ status: "cancelled", answers: this.state.answers });
       return;
     }
 
     if (matchesKey(data, Key.shift("tab"))) {
-      this.syncInputToState();
+      this.syncInputToState({ flush: true });
       this.state = goToPreviousQuestion(this.state);
       this.loadCurrentAnswerIntoInput();
       this.stateChanged();
@@ -250,7 +258,7 @@ export class QuestionnaireComponent implements Component, Focusable {
     }
 
     if (matchesKey(data, Key.enter)) {
-      this.syncInputToState();
+      this.syncInputToState({ flush: true });
       this.state = advanceAfterSave(this.definition, this.state);
       if (this.state.mode === "question") {
         this.loadCurrentAnswerIntoInput();
@@ -266,6 +274,7 @@ export class QuestionnaireComponent implements Component, Focusable {
 
   private handleReviewInput(data: string): void {
     if (matchesKey(data, Key.escape)) {
+      this.persistCurrentState({ flush: true });
       this.onDone({ status: "cancelled", answers: this.state.answers });
       return;
     }
@@ -287,11 +296,13 @@ export class QuestionnaireComponent implements Component, Focusable {
       this.state = activation.state;
 
       if (activation.action === "cancel") {
+        this.persistCurrentState({ flush: true });
         this.onDone({ status: "cancelled", answers: this.state.answers });
         return;
       }
 
       if (activation.action === "submit") {
+        this.persistCurrentState({ flush: true });
         this.onDone({ status: "submitted", answers: this.state.answers });
         return;
       }

@@ -29,6 +29,13 @@ export interface QuestionnaireSubmissionPayload {
   responses: QuestionnaireResponse[];
 }
 
+export type QuestionnaireDefinitionSource = "provided" | "generated" | "fallback";
+
+export interface ResolvedQuestionnaireDefinition {
+  definition: QuestionnaireDefinition;
+  source: QuestionnaireDefinitionSource;
+}
+
 export interface QuestionnaireCancelledResult {
   status: "cancelled";
   draftPath: string;
@@ -40,10 +47,17 @@ export interface QuestionnaireSubmittedResult {
   draftPath: string;
   answers: QuestionnaireAnswers;
   payload: QuestionnaireSubmissionPayload;
-  message: string;
 }
 
 export type QuestionnaireRunResult = QuestionnaireCancelledResult | QuestionnaireSubmittedResult;
+
+export interface GrillMeToolResultDetails {
+  status: "cancelled" | "submitted";
+  source: QuestionnaireDefinitionSource;
+  draftPath: string;
+  answers: QuestionnaireAnswers;
+  payload?: QuestionnaireSubmissionPayload;
+}
 
 export function validateQuestionnaireDefinition(definition: QuestionnaireDefinition): void {
   if (!definition.title.trim()) {
@@ -96,6 +110,10 @@ export function createDraft(
   };
 }
 
+export function formatSubmissionJson(payload: QuestionnaireSubmissionPayload): string {
+  return JSON.stringify(payload, null, 2);
+}
+
 export function formatSubmissionMessage(payload: QuestionnaireSubmissionPayload): string {
-  return `Here are my answers from /grill-me:\n\n${JSON.stringify(payload, null, 2)}`;
+  return `Here are my answers from /grill-me:\n\n${formatSubmissionJson(payload)}`;
 }

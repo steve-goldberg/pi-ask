@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createDraft,
   createSubmissionPayload,
+  formatSubmissionJson,
   formatSubmissionMessage,
   validateQuestionnaireDefinition,
 } from "../../.pi/extensions/grill-me/types.js";
@@ -42,13 +43,17 @@ describe("grill-me types", () => {
     });
   });
 
-  it("formats the exact submit wrapper", () => {
-    expect(
-      formatSubmissionMessage({
-        title: "Example",
-        responses: [{ id: "one", question: "Question one?", answer: "First" }],
-      }),
-    ).toBe(
+  it("formats submission json and the wrapped submit message", () => {
+    const payload = {
+      title: "Example",
+      responses: [{ id: "one", question: "Question one?", answer: "First" }],
+    };
+
+    expect(formatSubmissionJson(payload)).toBe(
+      '{\n  "title": "Example",\n  "responses": [\n    {\n      "id": "one",\n      "question": "Question one?",\n      "answer": "First"\n    }\n  ]\n}',
+    );
+
+    expect(formatSubmissionMessage(payload)).toBe(
       'Here are my answers from /grill-me:\n\n{\n  "title": "Example",\n  "responses": [\n    {\n      "id": "one",\n      "question": "Question one?",\n      "answer": "First"\n    }\n  ]\n}',
     );
   });

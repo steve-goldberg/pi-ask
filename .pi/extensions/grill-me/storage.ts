@@ -5,6 +5,13 @@ import type { QuestionnaireAnswers, QuestionnaireDefinition, QuestionnaireDraft 
 import { createDraft } from "./types.js";
 
 export const DEFAULT_GRILL_ME_DRAFT_PATH = ".pi/tmp/grill-me.json";
+export const DEFAULT_DRAFT_PERSIST_DEBOUNCE_MS = 75;
+
+export interface DraftPersistenceManager {
+  schedule(answers: QuestionnaireAnswers): void;
+  flush(answers: QuestionnaireAnswers): QuestionnaireDraft;
+  dispose(): void;
+}
 
 export function resolveDraftPath(cwd: string, relativePath = DEFAULT_GRILL_ME_DRAFT_PATH): string {
   return resolve(cwd, relativePath);
@@ -33,6 +40,42 @@ export function updateDraftFile(
   const draft = createDraft(definition, answers);
   writeDraftFile(filePath, draft);
   return draft;
+}
+
+export function createDraftPersistenceManager(options: {
+  filePath: string;
+  definition: QuestionnaireDefinition;
+  debounceMs?: number;
+}): DraftPersistenceManager {
+  const { filePath, definition, debounceMs = DEFAULT_DRAFT_PERSIST_DEBOUNCE_MS } = options;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let lastAnswers: QuestionnaireAnswers = {};
+
+  const clearTimer = () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = undefined;
+    }
+  };
+
+  return {
+    schedule(answers) {
+      lastAnswers = { ...answers };
+      clearTimer();
+      timer = setTimeout(() => {
+        timer = undefined;
+        updateDraftFile(filePath, definition, lastAnswers);
+      }, debounceMs);
+    },
+    flush(answers) {
+      lastAnswers = { ...answers };
+      clearTimer();
+      return updateDraftFile(filePath, definition, lastAnswers);
+    },
+    dispose() {
+      clearTimer();
+    },
+  };
 }
 
 export function removeDraftFile(filePath: string): void {
