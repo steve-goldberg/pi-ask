@@ -57,49 +57,43 @@
       "goal": "Create a reusable pi-native grounded clarification extension that lets pi ask the user concise, structured questions one at a time instead of dumping a long wall of text into chat, can ground on explicitly mentioned files plus session context, persists draft answers safely to a temp JSON file, supports quick review/editing in the TUI, surfaces provenance, and routes submitted answers back to either the active session or the calling tool flow depending on how it was invoked.",
       "scope": {
         "part1a": "Done: build the standalone reusable questionnaire engine and expose it through /grill-me with a built-in fallback question set, review/edit flow, draft persistence, debounced updates while typing, failure-safe cleanup semantics, and manual submit-as-user-message behavior.",
-        "part1b": "Next: shift /grill-me from session/focus-only generation into a grounded clarification system that reads explicitly mentioned artifacts first, combines them with session context, detects thin context honestly, supports quick/deep question budgets, exposes an agent-callable grill_me tool with explicit artifacts and mode parameters, surfaces provenance, and upgrades the input UX for long answers and artifact hints.",
+        "part1b": "Next: add quick/deep question budgets, keep refining generated question quality from dogfooding feedback, and continue using the same grounded questionnaire engine in future clarification workflows.",
         "part2": "Wire the same grounded questionnaire engine into future clarification workflows so planning flows can generate or inject questions, collect answers, and write clarifications back into PRD.md and per-feature markdown files."
       },
       "implementationReview": {
-        "summary": "The current implementation is a solid reusable questionnaire engine and already includes dynamic generation, the agent-callable tool, safer cleanup semantics, and debounced draft persistence, but it still falls short of the clarified grounded-questioning product direction.",
+        "summary": "The current implementation now includes explicit artifact grounding, raw-request preservation, thin-context honesty, provenance in command/tool flows, and an Editor-based wrapped answering experience with @file autocomplete. The main remaining planned product item is quick/deep question budgets, while dogfooding suggests some question-quality refinement may still be useful.",
         "alignment": {
           "oldPlanPart1": "strong",
-          "currentVision": "partial"
+          "currentVision": "strong"
         },
         "strengths": [
           "project-local pi extension structure is good",
           "questionnaire engine is reusable internally",
-          "dynamic generation from session context plus focus already exists",
+          "dynamic generation from grounded artifacts plus session context already exists",
+          "raw user request is preserved separately from extracted artifact lists",
           "agent-callable grill_me tool already exists",
+          "thin-context exploratory behavior and provenance are implemented",
+          "Editor-based wrapped answering plus @file autocomplete are implemented",
           "failure-safe submit cleanup and debounced draft persistence are already implemented",
           "TUI flow is clean and tested",
           "lint, typecheck, and tests pass"
         ],
         "findings": [
           {
-            "severity": "high",
-            "area": "grounding",
-            "summary": "Question generation still relies on focus plus session context and does not read explicitly mentioned project artifacts before asking deeper questions."
-          },
-          {
-            "severity": "high",
-            "area": "thinContextHonesty",
-            "summary": "In fresh or thin-context sessions the generator can ask file-specific or plan-specific questions without enough grounding, instead of first admitting the lack of context and asking for or gathering grounding."
+            "severity": "medium",
+            "area": "questionQuality",
+            "summary": "Dogfooding suggests that some generated questionnaires can still feel generic or weakly targeted even when the grounding architecture is correct. This now looks like a prompt and heuristic quality issue rather than missing artifact grounding."
           },
           {
             "severity": "medium",
-            "area": "provenance",
-            "summary": "The extension does not clearly surface what a questionnaire was based on, such as provided definition, mentioned files, session context, thin-context generation, or fallback."
-          },
-          {
-            "severity": "medium",
-            "area": "inputUX",
-            "summary": "The current answer input behaves like a horizontal-scrolling field instead of a wrapped editor-like surface, which makes longer answers difficult to edit and does not support artifact mention affordances."
+            "area": "questionBudgetModes",
+            "summary": "Quick and deep question budget modes are still planned but not implemented."
           }
         ],
         "keyConsiderations": [
           "definition stays first-class and bypasses grounding plus generation entirely",
           "there is no default artifact set; only explicitly mentioned files, session context, or exploratory grounding should be used",
+          "preserve the raw user request separately from extracted artifact lists so meaning is not destroyed by cleanup",
           "grill_me should remain a single grounded questionnaire round, with follow-up rounds owned by the agent or workflow rather than hidden inside the extension",
           "grounding should prefer mentioned artifacts plus session context before deeper question generation",
           "thin-context behavior should be outcome-first and honest about missing grounding",
@@ -120,7 +114,7 @@
           "examples": [
             "/grill-me",
             "/grill-me clarify README goals",
-            "/grill-me refine the extension behavior using @plan.json and @PRD.md"
+            "/grill-me refine the extension behavior using @progress.json and @PRD.md"
           ]
         },
         "tool": {
@@ -370,8 +364,7 @@
         "tests/integration/grill-me-submit.test.ts",
         "tests/integration/grill-me-tool.test.ts",
         ".pi/extensions/grill-me/grounding.ts",
-        "tests/unit/grill-me-grounding.test.ts",
-        "tests/integration/grill-me-provenance.test.ts"
+        "tests/unit/grill-me-grounding.test.ts"
       ],
       "workItems": [
         {
@@ -558,7 +551,7 @@
         {
           "id": "G013",
           "title": "Add artifact-aware grounding from explicit mentions and tool artifacts",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G007",
             "G008",
@@ -578,7 +571,7 @@
         {
           "id": "G014",
           "title": "Detect thin context and switch to exploratory or outcome-first questioning",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G013"
           ],
@@ -610,7 +603,7 @@
         {
           "id": "G016",
           "title": "Expose grounding provenance in UI and tool results",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G013",
             "G014"
@@ -618,16 +611,15 @@
           "goal": "Surface what the questionnaire was based on, including provided definition, explicit artifacts, session context, thin-context generation, or fallback, so the operator can judge how grounded the questions are.",
           "files": [
             ".pi/extensions/grill-me/index.ts",
-            ".pi/extensions/grill-me/questionnaire.ts",
             ".pi/extensions/grill-me/types.ts",
             "tests/integration/grill-me-tool.test.ts",
-            "tests/integration/grill-me-provenance.test.ts"
+            "tests/integration/grill-me-command.test.ts"
           ]
         },
         {
           "id": "G017",
           "title": "Replace the answer Input with Editor and file-aware autocomplete",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G004"
           ],
@@ -1438,5 +1430,28 @@
         }
       ]
     }
-  ]
+  ],
+  "progressTracking": {
+    "lastSyncedCommit": "fbabedc",
+    "recentCommits": [
+      {
+        "commit": "bede3c3",
+        "summary": "Implemented explicit artifact grounding, thin-context honesty, and provenance plumbing for /grill-me."
+      },
+      {
+        "commit": "ea241be",
+        "summary": "Preserved raw user requests alongside extracted artifact lists so grounding keeps the user's phrasing intact."
+      },
+      {
+        "commit": "fbabedc",
+        "summary": "Replaced the questionnaire Input with Editor, added wrapped editing, and enabled @file autocomplete rooted at the current working directory."
+      }
+    ],
+    "openNotes": [
+      "Grounding architecture is now in place, but dogfooding suggests generated question quality may still need prompt and heuristic refinement in some sessions."
+    ],
+    "nextRecommendedWorkItems": [
+      "G015"
+    ]
+  }
 }

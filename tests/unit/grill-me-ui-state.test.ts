@@ -193,17 +193,17 @@ describe("grill-me ui state", () => {
 
   it("inserts @ file mentions through editor autocomplete rooted at the questionnaire cwd", async () => {
     const cwd = mkdtempSync(join(tmpdir(), "grill-me-ui-"));
-    writeFileSync(join(cwd, "plan.json"), "{}\n");
+    writeFileSync(join(cwd, "progress.json"), "{}\n");
 
     const { component, persisted } = createComponent({ cwd });
 
-    typeText(component, "Use @pla");
+    typeText(component, "Use @pro");
     component.handleInput("\t");
 
     await vi.waitFor(() => {
-      expect(persisted.at(-1)?.one).toContain("@plan.json");
+      expect(persisted.at(-1)?.one).toContain("@progress.json");
     });
 
-    expect(persisted.at(-1)?.one).toBe("Use @plan.json ");
+    expect(persisted.at(-1)?.one).toBe("Use @progress.json ");
   });
 });

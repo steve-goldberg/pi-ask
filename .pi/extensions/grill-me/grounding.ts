@@ -144,7 +144,7 @@ export function createThinContextQuestionnaireDefinition(context: GroundedQuesti
     : "What do you want this clarification round to produce?";
   const artifactRecommendation = context.requestedArtifacts.length > 0
     ? `I could not ground on the provided artifact hints yet: ${context.requestedArtifacts.join(", ")}. Give the exact file path that should anchor this round.`
-    : "Mention a concrete file path like @plan.json or @PRD.md if an artifact should anchor this round.";
+    : "Mention a concrete file path like @progress.json or @PRD.md if an artifact should anchor this round.";
 
   return {
     title: context.rawRequest ? "Grounded Clarification Kickoff" : "Clarification Kickoff",

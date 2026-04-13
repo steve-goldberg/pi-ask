@@ -62,11 +62,11 @@ describe("grill-me types", () => {
       formatQuestionnaireProvenance({
         source: "generated",
         grounding: ["explicit artifacts", "session context"],
-        artifactsUsed: ["plan.json", "PRD.md"],
+        artifactsUsed: ["progress.json", "PRD.md"],
         contextSufficiency: "sufficient",
       }),
     ).toBe(
-      "Grounding: explicit artifacts, session context • Artifacts: plan.json, PRD.md • Context: sufficient",
+      "Grounding: explicit artifacts, session context • Artifacts: progress.json, PRD.md • Context: sufficient",
     );
   });
 

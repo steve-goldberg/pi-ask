@@ -92,7 +92,7 @@ describe("grill-me generator", () => {
   it("keeps the raw request intact while separately grounding on explicit artifacts", async () => {
     const root = mkdtempSync(join(tmpdir(), "grill-me-generator-"));
     writeFileSync(
-      join(root, "plan.json"),
+      join(root, "progress.json"),
       JSON.stringify(
         {
           sections: {
@@ -120,7 +120,7 @@ describe("grill-me generator", () => {
               questions: [
                 {
                   id: "gap",
-                  question: "Which grounding gap in plan.json must we fix first?",
+                  question: "Which grounding gap in progress.json must we fix first?",
                   multiline: false,
                 },
                 {
@@ -141,15 +141,15 @@ describe("grill-me generator", () => {
     const ctx = createContext(root);
 
     const result = await resolveQuestionnaireDefinition(ctx as never, {
-      rawRequest: "compare @plan.json to the current flow and find the grounding gap",
-      artifacts: ["plan.json"],
+      rawRequest: "compare @progress.json to the current flow and find the grounding gap",
+      artifacts: ["progress.json"],
     });
 
     expect(result.source).toBe("generated");
     expect(result.definition).toEqual({
       title: "Grounded Plan Clarification",
       questions: [
-        { id: "gap", question: "Which grounding gap in plan.json must we fix first?", multiline: false },
+        { id: "gap", question: "Which grounding gap in progress.json must we fix first?", multiline: false },
         {
           id: "proof",
           question: "What should prove that explicit artifact grounding is working?",
@@ -160,7 +160,7 @@ describe("grill-me generator", () => {
     expect(result.provenance).toEqual({
       source: "generated",
       grounding: expect.arrayContaining(["explicit artifacts", "session context"]),
-      artifactsUsed: ["plan.json"],
+      artifactsUsed: ["progress.json"],
       contextSufficiency: "sufficient",
     });
     expect(completeMock).toHaveBeenCalledTimes(1);
@@ -171,14 +171,14 @@ describe("grill-me generator", () => {
           content: [
             {
               type: "text",
-              text: expect.stringContaining("Artifact: plan.json"),
+              text: expect.stringContaining("Artifact: progress.json"),
             },
           ],
         },
       ],
     });
     expect(completeMock.mock.calls[0]?.[1]?.messages?.[0]?.content?.[0]?.text).toContain(
-      "Original request: compare @plan.json to the current flow and find the grounding gap",
+      "Original request: compare @progress.json to the current flow and find the grounding gap",
     );
     expect(completeMock.mock.calls[0]?.[1]?.messages?.[0]?.content?.[0]?.text).toContain(
       "Ground question generation on explicit artifacts before asking file-specific questions.",
@@ -205,7 +205,7 @@ describe("grill-me generator", () => {
           ],
         },
       }) as never,
-      { rawRequest: "compare @plan.json and @PRD.md to find what the extension is missing" },
+      { rawRequest: "compare @progress.json and @PRD.md to find what the extension is missing" },
     );
 
     expect(result).toEqual({
@@ -215,7 +215,7 @@ describe("grill-me generator", () => {
         questions: [
           {
             id: "outcome",
-            question: "For “compare @plan.json and @PRD.md to find what the extension is missing”, what do you want this clarification round to produce?",
+            question: "For “compare @progress.json and @PRD.md to find what the extension is missing”, what do you want this clarification round to produce?",
             multiline: false,
           },
           {
@@ -223,7 +223,7 @@ describe("grill-me generator", () => {
             question: "Which artifact or file should I base this on first?",
             multiline: false,
             recommendation:
-              "Mention a concrete file path like @plan.json or @PRD.md if an artifact should anchor this round.",
+              "Mention a concrete file path like @progress.json or @PRD.md if an artifact should anchor this round.",
           },
           {
             id: "ambiguity",

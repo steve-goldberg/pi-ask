@@ -104,7 +104,7 @@ describe("/grill-me command", () => {
       provenance: {
         source: "generated",
         grounding: ["explicit artifacts", "session context"],
-        artifactsUsed: ["plan.json", "PRD.md"],
+        artifactsUsed: ["progress.json", "PRD.md"],
         contextSufficiency: "sufficient",
       },
     });
@@ -125,16 +125,16 @@ describe("/grill-me command", () => {
 
     const [, command] = pi.registerCommand.mock.calls[0];
     const root = mkdtempSync(join(tmpdir(), "grill-me-command-"));
-    writeFileSync(join(root, "plan.json"), "{}\n");
+    writeFileSync(join(root, "progress.json"), "{}\n");
     writeFileSync(join(root, "PRD.md"), "# PRD\n");
 
     const ctx = createContext({ cwd: root });
 
-    await command.handler("clarify auth edge cases using @plan.json and @PRD.md", ctx);
+    await command.handler("clarify auth edge cases using @progress.json and @PRD.md", ctx);
 
     expect(resolveQuestionnaireDefinitionMock).toHaveBeenCalledWith(ctx, {
-      rawRequest: "clarify auth edge cases using @plan.json and @PRD.md",
-      artifacts: ["plan.json", "PRD.md"],
+      rawRequest: "clarify auth edge cases using @progress.json and @PRD.md",
+      artifacts: ["progress.json", "PRD.md"],
       fallbackDefinition: expect.objectContaining({ title: "Design Clarification" }),
     });
     expect(runQuestionnaireMock).toHaveBeenCalledWith(ctx, {
@@ -144,7 +144,7 @@ describe("/grill-me command", () => {
       },
     });
     expect(ctx.ui.notify).toHaveBeenCalledWith(
-      "Opening /grill-me. Grounding: explicit artifacts, session context • Artifacts: plan.json, PRD.md • Context: sufficient",
+      "Opening /grill-me. Grounding: explicit artifacts, session context • Artifacts: progress.json, PRD.md • Context: sufficient",
       "info",
     );
   });

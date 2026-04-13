@@ -4,12 +4,12 @@ A small TypeScript workspace for building **pi-native extensions** around a disc
 
 This repo currently has two related tracks:
 
-1. **The long-term goal:** a project-local Ralph controller for one-feature-at-a-time delivery.
-2. **The current implemented extension:** a reusable **`/grill-me`** clarification flow for pi.
+1. **Long-term product goal:** a project-local Ralph controller for one-feature-at-a-time delivery.
+2. **Current implemented extension:** a reusable grounded clarification system exposed as **`/grill-me`** and **`grill_me`**.
 
 ## Current status
 
-Right now, the most complete piece in this repo is the **`grill-me` extension** under:
+The most complete part of this repo today is the **`grill-me`** extension under:
 
 - `.pi/extensions/grill-me/index.ts`
 - `.pi/extensions/grill-me/types.ts`
@@ -18,8 +18,9 @@ Right now, the most complete piece in this repo is the **`grill-me` extension** 
 - `.pi/extensions/grill-me/questionnaire.ts`
 - `.pi/extensions/grill-me/ui.ts`
 - `.pi/extensions/grill-me/generator.ts`
+- `.pi/extensions/grill-me/grounding.ts`
 
-The broader Ralph controller described in `PRD.md` and `plan.json` is still largely a roadmap.
+The broader Ralph controller described in `PRD.md` and `progress.json` is still mostly roadmap work.
 
 Quality gates currently pass:
 
@@ -27,98 +28,139 @@ Quality gates currently pass:
 - `npm run typecheck`
 - `npm test`
 
-## What the built extension does
+## What `grill-me` now does
 
-The implemented extension provides a **one-question-at-a-time TUI questionnaire** that can be used in two ways:
+The current implementation is no longer just a static questionnaire.
 
-### 1. Manual command
+It supports:
+
+- **manual command flow** via `/grill-me`
+- **agent-invoked flow** via `grill_me`
+- **explicit artifact grounding** from user- or agent-supplied files
+- **no default artifact set**
+- **raw request preservation** separate from extracted artifact paths
+- **thin-context honesty** with exploratory/outcome-first questions
+- **provenance** in tool details and command launch context
+- **wrapped Editor-based answering** instead of a single-line input
+- **`@file` autocomplete** inside the questionnaire UI
+- **debounced draft persistence** with failure-safe cleanup semantics
+
+## How to use it
+
+### Manual command
+
 ```text
 /grill-me
 /grill-me clarify auth edge cases
+/grill-me refine the extension behavior using @progress.json and @PRD.md
 ```
 
 Behavior:
+
 - opens an interactive questionnaire in the TUI
-- uses the current session context plus optional focus text to generate targeted questions
-- falls back to a bundled default questionnaire if generation is unavailable
-- lets the user review/edit answers before submitting
+- reads explicitly mentioned artifacts when they are provided
+- combines grounded artifacts with session context when available
+- preserves the original user phrasing as part of generation context
+- falls back to thin-context exploratory questions when grounding is weak
+- lets the user review and edit answers before submit
 - sends the final answers back into the active session as a normal user message
 
-### 2. Agent-callable tool
+### Agent-callable tool
+
 Tool name:
+
 ```text
 grill_me
 ```
 
 Behavior:
-- lets the agent ask structured clarification questions mid-workflow
-- returns answers directly as the tool result in the same turn
-- supports an optional `focus` string
-- also supports passing a full questionnaire `definition` directly
 
-## Key extension features
+- lets the agent ask a bounded clarification round mid-workflow
+- supports optional `focus`, `artifacts`, and `definition`
+- returns structured answers directly in the same turn
+- includes provenance metadata in tool details
 
-### Dynamic question generation
-The extension can generate short questionnaires from:
-- recent session context
-- session name
-- optional focus text
+If `definition` is supplied, it remains a **first-class bypass**:
 
-If generation cannot run, it falls back to the bundled default question set in:
-- `.pi/extensions/grill-me/questions.ts`
+- no grounding
+- no generation
+- run the provided questionnaire directly
 
-### Shared questionnaire engine
-The TUI flow is reusable and lives in:
-- `.pi/extensions/grill-me/questionnaire.ts`
-- `.pi/extensions/grill-me/ui.ts`
+## Key implementation details
 
-It supports:
-- one question at a time
-- Enter to save and advance
-- Shift+Tab to go back
-- review screen with answer selection
-- Enter to edit a prior answer
-- selectable **Submit** and **Cancel** actions
+### Grounding model
+
+Question generation now prefers:
+
+1. provided questionnaire definition
+2. explicit artifacts plus session context
+3. session context alone when sufficient
+4. thin-context exploratory generation
+5. bundled fallback questionnaire
+
+Important constraint:
+
+- `grill-me` does **not** auto-load `PRD.md`, `README.md`, or `progress.json` by convention
+
+### Input UX
+
+The answer field now uses `Editor` from `@mariozechner/pi-tui`.
+
+Current behavior:
+
+- `Enter` saves and advances
+- `Shift+Enter` inserts a newline inside the answer
+- `Shift+Tab` goes to the previous question
+- `Escape` cancels and keeps the draft
+- long answers stay visible through wrapped rendering
+- typing `@` supports file autocomplete rooted at the current working directory
 
 ### Draft persistence
+
 Draft answers are stored at:
+
 - `.pi/tmp/grill-me.json`
 
 Behavior:
-- draft is overwritten on start
-- updates are persisted during the session
-- persistence is debounced while typing
-- force flush happens on navigation boundaries and submit/cancel
-- cancel keeps the draft
-- successful handoff removes the draft
-- failed handoff keeps the draft
 
-### Safer submit semantics
-The extension avoids deleting the draft too early.
+- overwrite on start
+- debounced persistence while typing
+- force flush on navigation boundaries and submit/cancel
+- keep draft on cancel
+- remove draft only after successful handoff
+- keep draft if handoff fails
 
-For the manual command:
-- answers are handed back into the session first
-- draft deletion happens only after successful handoff
+## Project docs
 
-For the tool:
-- answers are returned as the tool result
-- cleanup is attempted after success
+### `PRD.md`
 
-## Repo structure
+`PRD.md` defines the product vision and non-negotiable behavior for the repo.
 
-### Product and planning docs
-- `PRD.md` — product vision for the full pi-native Ralph loop
-- `plan.json` — implementation roadmap and work breakdown
+### `progress.json`
 
-### Current implemented extension
-- `.pi/extensions/grill-me/*` — command, tool, generator, UI, storage, types
+`progress.json` is the implementation roadmap and status tracker.
 
-### Future Ralph runtime template
-- `.pi/ralph/features.json` — manifest template for the future Ralph loop
+It now reflects recent `grill-me` progress, including:
 
-### Test coverage
-- `tests/unit/*` — types, storage, questions, UI state, questionnaire runner, generator
-- `tests/integration/*` — command flow, submit flow, tool flow
+- grounded artifact loading
+- thin-context handling
+- provenance support
+- Editor UX completion
+- recent synced commits via `progressTracking`
+
+### `.pi/ralph/features.json`
+
+This is the future runtime manifest template for the Ralph loop itself.
+
+## Immediate next work
+
+According to `progress.json`, the main remaining planned `grill-me` item is:
+
+- **G015** — quick/deep question budgets
+
+Also worth watching during dogfooding:
+
+- grounded question **quality refinement** even when the grounding architecture is technically correct
 
 ## Development
 
@@ -136,78 +178,11 @@ npm run typecheck
 npm test
 ```
 
-## Understanding the roadmap
-
-### `PRD.md`
-`PRD.md` describes the bigger target system:
-- a long-running controller
-- fresh coder attempts per feature
-- strict coder/tester separation
-- deterministic gates
-- simple live progress UI
-
-### `plan.json`
-`plan.json` contains two layers:
-
-1. **`sections.grillMe`**
-   - a detailed implementation plan for the clarification extension
-2. **`features`**
-   - the future Ralph harness roadmap (`F001`–`F014`)
-
-## Important note: plan vs implementation drift
-
-The codebase is ahead of part of the written `grillMe` plan.
-
-Several items still marked as planned in `plan.json` are already present in the code, including:
-- dynamic question generation
-- optional focus args for `/grill-me`
-- the agent-callable `grill_me` tool
-- safer draft cleanup semantics
-- debounced persistence
-
-So one of the next useful tasks is to **reconcile `plan.json` with the actual implementation**.
-
-## Recommended next steps
-
-### Option A: Finish documenting and stabilizing `grill-me`
-Good if the immediate goal is understanding and polishing what already exists.
-
-Suggested steps:
-1. update `plan.json` statuses to match the code
-2. add usage examples and expected answer payloads to docs
-3. document when to use `/grill-me` vs the `grill_me` tool
-4. decide whether Part 2 should write clarifications back into `PRD.md` and feature docs automatically
-
-### Option B: Resume the Ralph harness build
-Good if `/grill-me` is considered “good enough for now.”
-
-Suggested starting sequence from the plan:
-1. `F001` bootstrap workspace status reconciliation
-2. `F002` typed Ralph config/state loaders
-3. `F003` manifest schema + dependency selectors
-4. `F004` extension entrypoint + operator commands
-
-## Example tool result shape
-
-The `grill_me` tool returns structured answers like:
-
-```json
-{
-  "title": "Auth Clarification",
-  "responses": [
-    {
-      "id": "login_method",
-      "question": "Which login methods must v1 support?",
-      "answer": "Email + GitHub"
-    }
-  ]
-}
-```
-
 ## Summary
 
 If you are opening this repo cold, the simplest mental model is:
 
 - **The vision** is a pi-native Ralph controller.
-- **The implemented piece today** is a reusable interactive clarification extension called **`grill-me`**.
-- **The best immediate cleanup task** is updating the docs and plan so they reflect what has already been built.
+- **The implemented piece today** is a reusable grounded clarification extension called **`grill-me`**.
+- **The active tracking file** is now **`progress.json`**.
+- **The next planned `grill-me` feature** is quick/deep question budgets, with further dogfood-driven quality refinement likely after that.

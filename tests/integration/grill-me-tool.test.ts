@@ -72,7 +72,7 @@ describe("grill_me tool", () => {
       provenance: {
         source: "generated",
         grounding: ["explicit artifacts", "session context"],
-        artifactsUsed: ["plan.json"],
+        artifactsUsed: ["progress.json"],
         contextSufficiency: "sufficient",
       },
     });
@@ -109,7 +109,7 @@ describe("grill_me tool", () => {
 
     const result = await tool.execute(
       "tool-call-id",
-      { focus: "auth edge cases", artifacts: ["plan.json"] },
+      { focus: "auth edge cases", artifacts: ["progress.json"] },
       undefined,
       onUpdate,
       ctx,
@@ -117,7 +117,7 @@ describe("grill_me tool", () => {
 
     expect(resolveQuestionnaireDefinitionMock).toHaveBeenCalledWith(ctx, {
       rawRequest: "auth edge cases",
-      artifacts: ["plan.json"],
+      artifacts: ["progress.json"],
       definition: undefined,
       fallbackDefinition: expect.objectContaining({ title: "Design Clarification" }),
     });
@@ -139,7 +139,7 @@ describe("grill_me tool", () => {
         status: "submitted",
         source: "generated",
         grounding: ["explicit artifacts", "session context"],
-        artifactsUsed: ["plan.json"],
+        artifactsUsed: ["progress.json"],
         contextSufficiency: "sufficient",
         draftPath: "/repo/.pi/tmp/grill-me.json",
         answers: {

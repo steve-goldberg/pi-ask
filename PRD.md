@@ -5,9 +5,9 @@
 This document is the **vision and product plan** for this repository.
 
 - `PRD.md` defines the **why, what, and non-negotiable product behavior**.
-- `plan.json` defines the **implementation roadmap and work breakdown** for building it.
+- `progress.json` defines the **implementation roadmap and work breakdown** for building it.
 
-`plan.json` does **not** replace this PRD. It operationalizes it.
+`progress.json` does **not** replace this PRD. It operationalizes it.
 
 ---
 
@@ -189,7 +189,7 @@ Responsibilities:
 ## 6.1 `PRD.md`
 The product vision for this repository.
 
-## 6.2 `plan.json`
+## 6.2 `progress.json`
 The implementation roadmap for building this repository.
 
 Use it for:
@@ -378,4 +378,4 @@ Core identity:
 
 For the actual build sequence and implementation details, see:
 
-- `plan.json`
+- `progress.json`
