@@ -71,6 +71,7 @@ export async function resolveQuestionnaireDefinition(
   }
 
   const groundedContext = resolveGroundedQuestionnaireContext(ctx, {
+    rawRequest: options.rawRequest,
     focus: options.focus,
     artifacts: options.artifacts,
   });

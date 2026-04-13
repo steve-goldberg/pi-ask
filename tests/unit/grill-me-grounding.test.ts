@@ -37,7 +37,7 @@ describe("grill-me grounding", () => {
     ).toEqual(["plan.json", "PRD.md", "README.md"]);
   });
 
-  it("reads explicit artifacts and combines them with session context", () => {
+  it("preserves the raw request while reading explicit artifacts and combining them with session context", () => {
     const root = mkdtempSync(join(tmpdir(), "grill-me-grounding-"));
     writeFileSync(join(root, "plan.json"), '{"goal":"Read explicit artifacts before asking file-specific questions."}\n');
 
@@ -58,11 +58,12 @@ describe("grill-me grounding", () => {
         ]),
       } as never,
       {
-        focus: "grounding fix",
+        rawRequest: "compare @plan.json to the current flow and find the grounding gap",
         artifacts: ["plan.json"],
       },
     );
 
+    expect(result.rawRequest).toBe("compare @plan.json to the current flow and find the grounding gap");
     expect(result.contextSufficiency).toBe("sufficient");
     expect(result.grounding).toEqual(expect.arrayContaining(["explicit artifacts", "session context"]));
     expect(result.requestedArtifacts).toEqual(["plan.json"]);
@@ -90,10 +91,11 @@ describe("grill-me grounding", () => {
         ]),
       } as never,
       {
-        focus: "plan help",
+        rawRequest: "compare @plan.json and @PRD.md to find what the extension is missing",
       },
     );
 
+    expect(result.rawRequest).toBe("compare @plan.json and @PRD.md to find what the extension is missing");
     expect(result.contextSufficiency).toBe("thin");
     expect(result.grounding).toEqual(expect.arrayContaining(["session context", "thin-context generation"]));
     expect(result.artifactsUsed).toEqual([]);

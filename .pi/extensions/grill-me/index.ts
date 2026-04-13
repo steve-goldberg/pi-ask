@@ -50,7 +50,7 @@ export default function grillMeExtension(pi: ExtensionAPI) {
       try {
         const artifacts = extractExplicitArtifactsFromCommandArgs(args, ctx.cwd);
         const resolution = await resolveQuestionnaireDefinition(ctx, {
-          focus: args.trim() || undefined,
+          rawRequest: args.trim() || undefined,
           artifacts,
           fallbackDefinition: DEFAULT_GRILL_ME_QUESTIONNAIRE,
         });
@@ -122,7 +122,7 @@ export default function grillMeExtension(pi: ExtensionAPI) {
       });
 
       const resolution = await resolveQuestionnaireDefinition(ctx, {
-        focus: params.focus,
+        rawRequest: params.focus,
         artifacts: params.artifacts,
         definition: params.definition,
         fallbackDefinition: DEFAULT_GRILL_ME_QUESTIONNAIRE,

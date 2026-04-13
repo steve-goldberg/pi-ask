@@ -94,7 +94,7 @@ describe("/grill-me command", () => {
     expect(runQuestionnaireMock).not.toHaveBeenCalled();
   });
 
-  it("passes optional focus args and explicit artifact hints into grounded resolution", async () => {
+  it("passes the raw command request unchanged plus explicit artifact hints into grounded resolution", async () => {
     resolveQuestionnaireDefinitionMock.mockResolvedValueOnce({
       source: "generated",
       definition: {
@@ -133,7 +133,7 @@ describe("/grill-me command", () => {
     await command.handler("clarify auth edge cases using @plan.json and @PRD.md", ctx);
 
     expect(resolveQuestionnaireDefinitionMock).toHaveBeenCalledWith(ctx, {
-      focus: "clarify auth edge cases using @plan.json and @PRD.md",
+      rawRequest: "clarify auth edge cases using @plan.json and @PRD.md",
       artifacts: ["plan.json", "PRD.md"],
       fallbackDefinition: expect.objectContaining({ title: "Design Clarification" }),
     });

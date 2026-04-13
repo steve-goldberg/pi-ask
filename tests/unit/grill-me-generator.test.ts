@@ -89,7 +89,7 @@ describe("grill-me generator", () => {
     expect(completeMock).not.toHaveBeenCalled();
   });
 
-  it("reads explicit artifacts before generating grounded questions", async () => {
+  it("keeps the raw request intact while separately grounding on explicit artifacts", async () => {
     const root = mkdtempSync(join(tmpdir(), "grill-me-generator-"));
     writeFileSync(
       join(root, "plan.json"),
@@ -141,7 +141,7 @@ describe("grill-me generator", () => {
     const ctx = createContext(root);
 
     const result = await resolveQuestionnaireDefinition(ctx as never, {
-      focus: "refine the grounding behavior",
+      rawRequest: "compare @plan.json to the current flow and find the grounding gap",
       artifacts: ["plan.json"],
     });
 
@@ -178,11 +178,15 @@ describe("grill-me generator", () => {
       ],
     });
     expect(completeMock.mock.calls[0]?.[1]?.messages?.[0]?.content?.[0]?.text).toContain(
+      "Original request: compare @plan.json to the current flow and find the grounding gap",
+    );
+    expect(completeMock.mock.calls[0]?.[1]?.messages?.[0]?.content?.[0]?.text).toContain(
       "Ground question generation on explicit artifacts before asking file-specific questions.",
     );
+    expect(completeMock.mock.calls[0]?.[1]?.messages?.[0]?.content?.[0]?.text).not.toContain("Explicit focus:");
   });
 
-  it("switches to an exploratory thin-context questionnaire instead of pretending to know unseen files", async () => {
+  it("uses the raw request unchanged in thin-context exploratory questions instead of mangling file mentions", async () => {
     const root = mkdtempSync(join(tmpdir(), "grill-me-generator-"));
     const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/grill-me/generator.js");
 
@@ -201,7 +205,7 @@ describe("grill-me generator", () => {
           ],
         },
       }) as never,
-      { focus: "clarify the plan" },
+      { rawRequest: "compare @plan.json and @PRD.md to find what the extension is missing" },
     );
 
     expect(result).toEqual({
@@ -211,7 +215,7 @@ describe("grill-me generator", () => {
         questions: [
           {
             id: "outcome",
-            question: "For “clarify the plan”, what do you want this clarification round to produce?",
+            question: "For “compare @plan.json and @PRD.md to find what the extension is missing”, what do you want this clarification round to produce?",
             multiline: false,
           },
           {
@@ -248,7 +252,7 @@ describe("grill-me generator", () => {
     const result = await resolveQuestionnaireDefinition(
       createContext(root, { model: undefined }) as never,
       {
-        focus: "clarify the grounding requirements",
+        rawRequest: "clarify the grounding requirements using @PRD.md",
         artifacts: ["PRD.md"],
       },
     );

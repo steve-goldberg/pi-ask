@@ -116,7 +116,7 @@ describe("grill_me tool", () => {
     );
 
     expect(resolveQuestionnaireDefinitionMock).toHaveBeenCalledWith(ctx, {
-      focus: "auth edge cases",
+      rawRequest: "auth edge cases",
       artifacts: ["plan.json"],
       definition: undefined,
       fallbackDefinition: expect.objectContaining({ title: "Design Clarification" }),

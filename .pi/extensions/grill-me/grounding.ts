@@ -17,6 +17,7 @@ const MAX_ARTIFACT_PROMPT_CHARS_PER_FILE = 24_000;
 const MAX_TOTAL_ARTIFACT_PROMPT_CHARS = 36_000;
 
 export interface ResolveGroundingOptions {
+  rawRequest?: string;
   focus?: string;
   artifacts?: string[];
 }
@@ -28,7 +29,7 @@ export interface GroundedArtifact {
 }
 
 export interface GroundedQuestionnaireContext {
-  focus?: string;
+  rawRequest?: string;
   sessionName?: string;
   sessionExcerpt?: string;
   sessionMessageCount: number;
@@ -72,7 +73,7 @@ export function resolveGroundedQuestionnaireContext(
   ctx: Pick<ExtensionContext, "cwd" | "sessionManager">,
   options: ResolveGroundingOptions = {},
 ): GroundedQuestionnaireContext {
-  const focus = options.focus?.trim() || undefined;
+  const rawRequest = options.rawRequest?.trim() || options.focus?.trim() || undefined;
   const requestedArtifacts = normalizeRequestedArtifacts(options.artifacts ?? []);
   const artifactsUsed = readExplicitArtifacts(ctx.cwd, requestedArtifacts);
   const session = buildSessionContext(ctx.sessionManager.getBranch());
@@ -94,7 +95,7 @@ export function resolveGroundedQuestionnaireContext(
   }
 
   return {
-    focus,
+    rawRequest,
     sessionName: ctx.sessionManager.getSessionName(),
     sessionExcerpt: session.excerpt || undefined,
     sessionMessageCount: session.messageCount,
@@ -114,8 +115,8 @@ export function buildGroundedQuestionGenerationPrompt(context: GroundedQuestionn
     lines.push(`Session name: ${context.sessionName}`);
   }
 
-  if (context.focus) {
-    lines.push(`Explicit focus: ${context.focus}`);
+  if (context.rawRequest) {
+    lines.push(`Original request: ${context.rawRequest}`);
   }
 
   if (context.artifactsUsed.length > 0) {
@@ -138,15 +139,15 @@ export function buildGroundedQuestionGenerationPrompt(context: GroundedQuestionn
 }
 
 export function createThinContextQuestionnaireDefinition(context: GroundedQuestionnaireContext): QuestionnaireDefinition {
-  const outcomeQuestion = context.focus
-    ? `For “${context.focus}”, what do you want this clarification round to produce?`
+  const outcomeQuestion = context.rawRequest
+    ? `For “${context.rawRequest}”, what do you want this clarification round to produce?`
     : "What do you want this clarification round to produce?";
   const artifactRecommendation = context.requestedArtifacts.length > 0
     ? `I could not ground on the provided artifact hints yet: ${context.requestedArtifacts.join(", ")}. Give the exact file path that should anchor this round.`
     : "Mention a concrete file path like @plan.json or @PRD.md if an artifact should anchor this round.";
 
   return {
-    title: context.focus ? "Grounded Clarification Kickoff" : "Clarification Kickoff",
+    title: context.rawRequest ? "Grounded Clarification Kickoff" : "Clarification Kickoff",
     questions: [
       {
         id: "outcome",
