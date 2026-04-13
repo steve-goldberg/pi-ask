@@ -6,7 +6,7 @@ This document preserves the **Ralph execution-loop** portion of the product dire
 
 - `pi-ralph.md` defines the Ralph loop vision, non-negotiables, and execution model.
 - `grill-me-plan.md` defines the grounded clarification/context collection product.
-- `progress.json` defines the implementation roadmap and work breakdown for building the repository.
+- `ralph-progress.json` defines the focused Ralph loop implementation roadmap for this repository.
 
 ---
 
@@ -179,16 +179,19 @@ The Ralph loop product vision for this repository.
 ## 6.2 `grill-me-plan.md`
 The grounded clarification/context collection product direction for this repository.
 
-## 6.3 `progress.json`
-The implementation roadmap for building this repository.
+## 6.3 `ralph-progress.json`
+The focused implementation roadmap for the Ralph loop product.
 
 Use it for:
 - feature/work breakdown
 - sequencing
 - planned files
-- implementation progress
+- implementation progress for the Ralph execution track
 
-## 6.4 `.pi/ralph/features.json`
+## 6.4 `progress.json`
+The umbrella progress entrypoint that links the two product tracks for this repository.
+
+## 6.5 `.pi/ralph/features.json`
 The **runtime manifest template/target** for the actual Ralph system.
 
 Use it for:
@@ -323,4 +326,4 @@ Core identity:
 
 For the actual build sequence and implementation details, see:
 
-- `progress.json`
+- `ralph-progress.json`

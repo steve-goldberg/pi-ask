@@ -223,7 +223,7 @@ describe("grill-me generator", () => {
             question: "Which artifact or file should I base this on first?",
             multiline: false,
             recommendation:
-              "Mention a concrete file path like @progress.json or @PRD.md if an artifact should anchor this round.",
+              "Mention a concrete file path like @grillme-progress.json or @grill-me-plan.md if an artifact should anchor this round.",
           },
           {
             id: "ambiguity",

@@ -20,7 +20,7 @@ The most complete part of this repo today is the **`grill-me`** extension under:
 - `.pi/extensions/grill-me/generator.ts`
 - `.pi/extensions/grill-me/grounding.ts`
 
-The broader Ralph controller described in `PRD.md` and `progress.json` is still mostly roadmap work.
+The broader Ralph controller described in `pi-ralph.md` and `ralph-progress.json` is still mostly roadmap work.
 
 Quality gates currently pass:
 
@@ -52,7 +52,7 @@ It supports:
 ```text
 /grill-me
 /grill-me clarify auth edge cases
-/grill-me refine the extension behavior using @progress.json and @PRD.md
+/grill-me refine the extension behavior using @grillme-progress.json and @grill-me-plan.md
 ```
 
 Behavior:
@@ -100,7 +100,7 @@ Question generation now prefers:
 
 Important constraint:
 
-- `grill-me` does **not** auto-load `PRD.md`, `README.md`, or `progress.json` by convention
+- `grill-me` does **not** auto-load `grill-me-plan.md`, `README.md`, or `grillme-progress.json` by convention
 
 ### Input UX
 
@@ -134,11 +134,11 @@ Behavior:
 
 ### `PRD.md`
 
-`PRD.md` defines the product vision and non-negotiable behavior for the repo.
+`PRD.md` is now the umbrella entrypoint that links the split product docs.
 
-### `progress.json`
+### `grillme-progress.json`
 
-`progress.json` is the implementation roadmap and status tracker.
+`grillme-progress.json` is the focused implementation roadmap and status tracker for the grounded clarification product.
 
 It now reflects recent `grill-me` progress, including:
 
@@ -154,7 +154,7 @@ This is the future runtime manifest template for the Ralph loop itself.
 
 ## Immediate next work
 
-According to `progress.json`, the main remaining planned `grill-me` item is:
+According to `grillme-progress.json`, the main remaining planned `grill-me` item is:
 
 - **G015** — quick/deep question budgets
 
@@ -184,5 +184,7 @@ If you are opening this repo cold, the simplest mental model is:
 
 - **The vision** is a pi-native Ralph controller.
 - **The implemented piece today** is a reusable grounded clarification extension called **`grill-me`**.
-- **The active tracking file** is now **`progress.json`**.
+- **The umbrella tracking file** is **`progress.json`**.
+- **The focused grill-me tracking file** is **`grillme-progress.json`**.
+- **The focused Ralph tracking file** is **`ralph-progress.json`**.
 - **The next planned `grill-me` feature** is quick/deep question budgets, with further dogfood-driven quality refinement likely after that.

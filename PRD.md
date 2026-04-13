@@ -5,13 +5,15 @@ This repository now has **two related but independent product tracks**:
 1. **`grill-me-plan.md`** — the grounded clarification and context collection product
 2. **`pi-ralph.md`** — the Ralph-style execution loop and feature delivery product
 
-`progress.json` remains the implementation roadmap and status tracker for building the repository.
+`progress.json` is now the umbrella progress entrypoint, while `grillme-progress.json` and `ralph-progress.json` hold the focused implementation roadmaps for the two product tracks.
 
 ## How to use these docs
 
 - Read **`grill-me-plan.md`** for the context collection, questioning, template, and workflow direction.
 - Read **`pi-ralph.md`** for the feature-loop, coder/tester/controller, manifest, and execution direction.
-- Read **`progress.json`** for the current implementation sequence and status.
+- Read **`progress.json`** for the umbrella progress entrypoint.
+- Read **`grillme-progress.json`** for the grounded clarification implementation sequence and status.
+- Read **`ralph-progress.json`** for the Ralph loop implementation sequence and status.
 
 ## Why this split exists
 
