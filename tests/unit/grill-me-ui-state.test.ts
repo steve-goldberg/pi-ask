@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { visibleWidth } from "@mariozechner/pi-tui";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   activateReviewSelection,
@@ -7,6 +12,7 @@ import {
   getReviewItems,
   goToPreviousQuestion,
   moveReviewSelection,
+  QuestionnaireComponent,
   withAnswer,
   type QuestionnaireUiState,
 } from "../../.pi/extensions/grill-me/ui.js";
@@ -19,6 +25,64 @@ const definition = {
     { id: "three", question: "Question three?", multiline: false },
   ],
 };
+
+const singleQuestionDefinition = {
+  title: "Example",
+  questions: [{ id: "one", question: "Question one?", multiline: false }],
+};
+
+function createTheme() {
+  return {
+    fg: (_color: string, text: string) => text,
+    bg: (_color: string, text: string) => text,
+    bold: (text: string) => text,
+    italic: (text: string) => text,
+    strikethrough: (text: string) => text,
+  } as never;
+}
+
+function createComponent(options: {
+  cwd?: string;
+  definition?: typeof singleQuestionDefinition;
+  initialAnswers?: Record<string, string>;
+} = {}) {
+  const cwd = options.cwd ?? mkdtempSync(join(tmpdir(), "grill-me-ui-"));
+  const persisted: Array<Record<string, string>> = [];
+  const onDone = vi.fn();
+  const component = new QuestionnaireComponent(
+    {
+      requestRender: vi.fn(),
+      terminal: { rows: 40 },
+    } as never,
+    createTheme(),
+    cwd,
+    options.definition ?? singleQuestionDefinition,
+    options.initialAnswers ?? {},
+    (answers) => {
+      persisted.push({ ...answers });
+    },
+    onDone,
+  );
+
+  return { component, persisted, onDone, cwd };
+}
+
+function typeText(component: QuestionnaireComponent, text: string) {
+  for (const char of text) {
+    component.handleInput(char);
+  }
+}
+
+const ESC = String.fromCharCode(27);
+const ANSI_ESCAPE_PATTERN = new RegExp(`${ESC}\\[[0-9;?]*[ -/]*[@-~]`, "g");
+
+function normalizeRenderedText(lines: string[]): string {
+  return lines
+    .join("\n")
+    .replace(ANSI_ESCAPE_PATTERN, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 describe("grill-me ui state", () => {
   it("advances one question at a time and ends in review mode", () => {
@@ -93,5 +157,53 @@ describe("grill-me ui state", () => {
 
     state = moveReviewSelection(definition, state, -99);
     expect(state.reviewSelectionIndex).toBe(0);
+  });
+
+  it("renders long answers in wrapped editor lines instead of letting them disappear off-screen", () => {
+    const longAnswer =
+      "This answer should stay visible instead of scrolling off-screen when it wraps across multiple editor lines.";
+    const { component } = createComponent({
+      initialAnswers: { one: longAnswer },
+    });
+
+    const width = 28;
+    const lines = component.render(width);
+    const normalized = normalizeRenderedText(lines);
+
+    expect(lines.every((line) => visibleWidth(line) <= width)).toBe(true);
+    expect(normalized).toContain("This answer should stay visible instead of scrolling off-screen");
+    expect(normalized).toContain("when it wraps across multiple editor lines.");
+  });
+
+  it("persists wrapped multi-line edits as plain strings", () => {
+    const { component, persisted } = createComponent();
+
+    typeText(component, "First line that is long enough to wrap in the editor.");
+    component.handleInput("\n");
+    typeText(component, "Second line with more detail.");
+
+    expect(persisted.at(-1)?.one).toBe(
+      "First line that is long enough to wrap in the editor.\nSecond line with more detail.",
+    );
+
+    const rendered = normalizeRenderedText(component.render(30));
+    expect(rendered).toContain("First line that is long enough to wrap in the editor.");
+    expect(rendered).toContain("Second line with more detail.");
+  });
+
+  it("inserts @ file mentions through editor autocomplete rooted at the questionnaire cwd", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "grill-me-ui-"));
+    writeFileSync(join(cwd, "plan.json"), "{}\n");
+
+    const { component, persisted } = createComponent({ cwd });
+
+    typeText(component, "Use @pla");
+    component.handleInput("\t");
+
+    await vi.waitFor(() => {
+      expect(persisted.at(-1)?.one).toContain("@plan.json");
+    });
+
+    expect(persisted.at(-1)?.one).toBe("Use @plan.json ");
   });
 });

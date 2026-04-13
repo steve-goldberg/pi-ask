@@ -1,6 +1,17 @@
+import { statSync } from "node:fs";
+import { delimiter, join } from "node:path";
+
 import type { Theme } from "@mariozechner/pi-coding-agent";
 import type { Component, Focusable, TUI } from "@mariozechner/pi-tui";
-import { Input, Key, matchesKey, truncateToWidth, wrapTextWithAnsi } from "@mariozechner/pi-tui";
+import {
+  CombinedAutocompleteProvider,
+  Editor,
+  Key,
+  matchesKey,
+  truncateToWidth,
+  wrapTextWithAnsi,
+  type EditorTheme,
+} from "@mariozechner/pi-tui";
 
 import type { QuestionnaireAnswers, QuestionnaireDefinition } from "./types.js";
 
@@ -158,6 +169,64 @@ export function activateReviewSelection(
   };
 }
 
+export function createQuestionnaireEditorTheme(theme: Theme): EditorTheme {
+  return {
+    borderColor: (text) => theme.fg("accent", text),
+    selectList: {
+      selectedPrefix: (text) => theme.fg("accent", text),
+      selectedText: (text) => theme.fg("accent", text),
+      description: (text) => theme.fg("muted", text),
+      scrollInfo: (text) => theme.fg("dim", text),
+      noMatch: (text) => theme.fg("warning", text),
+    },
+  };
+}
+
+let cachedFdBinary: string | null | undefined;
+
+export function resolveQuestionnaireFdBinary(): string | null {
+  if (cachedFdBinary !== undefined) {
+    return cachedFdBinary;
+  }
+
+  const executableNames = process.platform === "win32"
+    ? ["fd.exe", "fdfind.exe", "fd.cmd", "fdfind.cmd"]
+    : ["fd", "fdfind"];
+
+  for (const pathEntry of (process.env.PATH ?? "").split(delimiter)) {
+    if (!pathEntry) {
+      continue;
+    }
+
+    for (const executableName of executableNames) {
+      const candidate = join(pathEntry, executableName);
+      try {
+        if (statSync(candidate).isFile()) {
+          cachedFdBinary = candidate;
+          return candidate;
+        }
+      } catch {
+        // Keep looking.
+      }
+    }
+  }
+
+  cachedFdBinary = null;
+  return null;
+}
+
+export function createQuestionnaireAutocompleteProvider(cwd: string): CombinedAutocompleteProvider {
+  return new CombinedAutocompleteProvider([], cwd, resolveQuestionnaireFdBinary());
+}
+
+function isEditorNewLineInput(data: string): boolean {
+  return data === "\n" ||
+    data === "\x1b\r" ||
+    data === "\x1b[13;2~" ||
+    (data.length > 1 && data.charCodeAt(0) === 10) ||
+    (data.length > 1 && data.includes("\x1b") && data.includes("\r"));
+}
+
 function percentageFor(questionIndex: number, totalQuestions: number): number {
   return Math.round(((questionIndex + 1) / totalQuestions) * 100);
 }
@@ -173,7 +242,7 @@ function dimEmpty(theme: Theme): string {
 }
 
 export class QuestionnaireComponent implements Component, Focusable {
-  private readonly input = new Input();
+  private readonly editor: Editor;
   private readonly stateChanged = () => {
     this.tui.requestRender();
   };
@@ -184,13 +253,21 @@ export class QuestionnaireComponent implements Component, Focusable {
   constructor(
     private readonly tui: TUI,
     private readonly theme: Theme,
+    private readonly cwd: string,
     private readonly definition: QuestionnaireDefinition,
     initialAnswers: QuestionnaireAnswers,
     private readonly onPersist: (answers: QuestionnaireAnswers, options?: PersistOptions) => void,
     private readonly onDone: (result: QuestionnaireUiResult) => void,
   ) {
     this.state = createQuestionnaireUiState(definition, initialAnswers);
-    this.input.setValue(this.currentAnswer());
+    this.editor = new Editor(tui, createQuestionnaireEditorTheme(theme));
+    this.editor.disableSubmit = true;
+    this.editor.setAutocompleteProvider(createQuestionnaireAutocompleteProvider(this.cwd));
+    this.editor.setText(this.currentAnswer());
+    this.editor.onChange = () => {
+      this.syncEditorToState();
+      this.stateChanged();
+    };
     this.onPersist(this.state.answers, { flush: true });
   }
 
@@ -200,11 +277,11 @@ export class QuestionnaireComponent implements Component, Focusable {
 
   set focused(value: boolean) {
     this._focused = value;
-    this.input.focused = value;
+    this.editor.focused = value;
   }
 
   invalidate(): void {
-    this.input.invalidate();
+    this.editor.invalidate();
   }
 
   render(width: number): string[] {
@@ -229,8 +306,8 @@ export class QuestionnaireComponent implements Component, Focusable {
     return this.state.answers[question.id] ?? "";
   }
 
-  private syncInputToState(options?: PersistOptions): void {
-    this.state = withAnswer(this.definition, this.state, this.input.getValue());
+  private syncEditorToState(options?: PersistOptions): void {
+    this.state = withAnswer(this.definition, this.state, this.editor.getExpandedText());
     this.onPersist(this.state.answers, options);
   }
 
@@ -238,37 +315,42 @@ export class QuestionnaireComponent implements Component, Focusable {
     this.onPersist(this.state.answers, options);
   }
 
-  private loadCurrentAnswerIntoInput(): void {
-    this.input.setValue(this.currentAnswer());
+  private loadCurrentAnswerIntoEditor(): void {
+    this.editor.setText(this.currentAnswer());
   }
 
   private handleQuestionInput(data: string): void {
     if (matchesKey(data, Key.escape)) {
-      this.syncInputToState({ flush: true });
+      this.syncEditorToState({ flush: true });
       this.onDone({ status: "cancelled", answers: this.state.answers });
       return;
     }
 
     if (matchesKey(data, Key.shift("tab"))) {
-      this.syncInputToState({ flush: true });
+      this.syncEditorToState({ flush: true });
       this.state = goToPreviousQuestion(this.state);
-      this.loadCurrentAnswerIntoInput();
+      this.loadCurrentAnswerIntoEditor();
       this.stateChanged();
       return;
     }
 
-    if (matchesKey(data, Key.enter)) {
-      this.syncInputToState({ flush: true });
+    if (matchesKey(data, Key.enter) && !isEditorNewLineInput(data)) {
+      if (this.editor.isShowingAutocomplete()) {
+        this.editor.handleInput(data);
+        this.stateChanged();
+        return;
+      }
+
+      this.syncEditorToState({ flush: true });
       this.state = advanceAfterSave(this.definition, this.state);
       if (this.state.mode === "question") {
-        this.loadCurrentAnswerIntoInput();
+        this.loadCurrentAnswerIntoEditor();
       }
       this.stateChanged();
       return;
     }
 
-    this.input.handleInput(data);
-    this.syncInputToState();
+    this.editor.handleInput(data);
     this.stateChanged();
   }
 
@@ -307,7 +389,7 @@ export class QuestionnaireComponent implements Component, Focusable {
         return;
       }
 
-      this.loadCurrentAnswerIntoInput();
+      this.loadCurrentAnswerIntoEditor();
       this.stateChanged();
     }
   }
@@ -340,16 +422,12 @@ export class QuestionnaireComponent implements Component, Focusable {
 
     lines.push("");
     lines.push(truncateToWidth(this.theme.fg("muted", "Answer"), width));
-    for (const line of this.input.render(Math.max(1, width))) {
-      lines.push(truncateToWidth(line, width));
+    for (const line of this.editor.render(Math.max(1, width))) {
+      lines.push(line);
     }
     lines.push("");
-    lines.push(
-      truncateToWidth(
-        this.theme.fg("dim", "Enter save & next • Shift+Tab previous • Esc cancel"),
-        width,
-      ),
-    );
+    renderWrapped(lines, this.theme.fg("dim", "Enter save & next • Shift+Enter newline • Shift+Tab previous • Esc cancel"), width);
+    renderWrapped(lines, this.theme.fg("dim", "Tab autocomplete • type @ for file mentions"), width);
 
     return lines;
   }

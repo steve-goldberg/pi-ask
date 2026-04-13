@@ -37,6 +37,7 @@ export async function runQuestionnaire(
       return new QuestionnaireComponent(
         tui,
         theme,
+        ctx.cwd,
         definition,
         answers,
         (nextAnswers, persistOptions?: PersistOptions) => {
