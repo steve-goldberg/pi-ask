@@ -21,8 +21,11 @@ Build a **pi-native long-running coding harness** inspired by Ralph loop and rel
 - separate **coding** from **testing**
 - only mark a feature complete when required gates pass
 - show simple live progress and loop state inside pi
+- actively close ambiguity by asking the **right grounded clarification questions at the right time**
 
-The system should feel minimal, practical, and reliable rather than flashy.
+The system should feel minimal, practical, reliable, and grounded rather than flashy.
+
+A key product goal is not just execution, but **shared understanding**: the tool should help the human and the agent converge on the same understanding of the codebase, the task, and the intended outcome before unnecessary implementation drift happens.
 
 ---
 
@@ -127,7 +130,13 @@ Each test type maps deterministically to either:
 - panel toggle
 
 ### Planning support
-A separate but related reusable questionnaire extension (`/grill-me`) will help refine plans/specs through structured Q/A.
+A separate but related grounded clarification system (`/grill-me` command and `grill_me` tool) will help refine plans, specs, and feature intent through structured Q/A.
+
+Its purpose is to:
+- ask targeted clarification questions one at a time
+- ground those questions in explicit artifacts and available session context when possible
+- avoid pretending to know unseen context when grounding is thin
+- return structured answers that can be reused for planning, spec refinement, and later feature implementation
 
 ## 4.2 Out of scope for v1
 - parallel feature execution
@@ -283,20 +292,43 @@ Preferred placements:
 
 ---
 
-## 11. `/grill-me` planning companion
+## 11. `/grill-me` grounded clarification companion
 
 This repository also includes a related planning goal:
 
-Build a reusable pi-native questionnaire extension exposed as `/grill-me`.
+Build a reusable pi-native grounded clarification system exposed both as:
+- `/grill-me` for human-invoked interactive clarification
+- `grill_me` for agent-invoked clarification inside a workflow
 
-Purpose:
-- ask one question at a time
-- collect structured Q/A in the TUI
-- support review and editing before submit
-- send structured answers back into the current session
-- later feed spec refinement and feature clarification workflows
+### Core purpose
+The end goal is a tool that knows the **right questions to ask at the right time** to gather the **right context**, so the human and the agent can reach a **shared understanding** of:
+- the codebase
+- the task
+- the intended outcome
+- the open ambiguities that still need resolution
 
-This is a supporting planning primitive, not the same thing as the Ralph execution loop.
+### Product behavior
+`/grill-me` should not just be a static questionnaire.
+
+It should:
+- ask one question at a time in a compact native-feeling pi UI
+- support quick review/edit/submit before handoff
+- use structured Q/A so answers are reusable by later planning and implementation workflows
+- prefer explicit grounding from mentioned artifacts plus available session context
+- honestly detect thin context and ask exploratory or outcome-first questions rather than pretending it has grounding it does not have
+- use a bundled fallback questionnaire only as a last resort
+- surface provenance so the operator can understand what the clarification round was based on
+
+### Workflow role
+`/grill-me` is a supporting planning primitive, not the same thing as the Ralph execution loop.
+
+Its job is to improve planning quality and reduce drift before or during execution by making clarification intentional, structured, and grounded.
+
+### Design boundaries
+For v1 and near-term planning:
+- one clarification round should be explicit and bounded
+- follow-up rounds should be controlled by the surrounding workflow, not hidden inside the extension
+- structured answers should be suitable for updating `PRD.md`, per-feature markdown, and future planning artifacts
 
 ---
 
@@ -305,11 +337,13 @@ This is a supporting planning primitive, not the same thing as the Ralph executi
 The operator should be able to:
 
 1. define a product direction and feature plan
-2. let the controller work through features one at a time
-3. inspect lightweight status in pi
-4. adjust settings and steering as needed
-5. trust that failed attempts do not silently advance the graph
-6. trust that frontend/full-stack work cannot pass without the required declared tests
+2. be asked for clarification only when it is useful and grounding-appropriate
+3. let the controller work through features one at a time
+4. inspect lightweight status in pi
+5. adjust settings and steering as needed
+6. trust that failed attempts do not silently advance the graph
+7. trust that frontend/full-stack work cannot pass without the required declared tests
+8. trust that the system is helping the human and agent stay aligned instead of drifting into mismatched assumptions
 
 ---
 
@@ -325,6 +359,8 @@ This project succeeds when:
 - passing a feature creates one clean commit
 - failure causes retry or stop, not silent advancement
 - the UI is simple but sufficient for operator confidence
+- the clarification system asks useful, grounded questions instead of generic ones
+- the human and the agent can reliably reach shared understanding before implementation drift sets in
 
 ---
 
@@ -338,6 +374,7 @@ Core identity:
 - strict coder/tester separation
 - deterministic gates
 - minimal but useful pi UI
+- grounded clarification that improves shared understanding between the human and the agent
 
 For the actual build sequence and implementation details, see:
 
