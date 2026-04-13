@@ -52,17 +52,94 @@
   "sections": {
     "grillMe": {
       "title": "Interactive /grill-me questionnaire extension",
-      "status": "planned",
+      "status": "in_progress",
       "priority": "high",
-      "goal": "Create a reusable pi-native interview/questionnaire extension that asks one question at a time, persists draft answers to a temp JSON file, lets the user review and edit answers quickly in the TUI, and on submit sends structured Q/A JSON back into the active pi session as a normal user message.",
+      "goal": "Create a reusable pi-native interview/questionnaire extension that lets pi ask the user concise, structured clarification questions one at a time instead of dumping a long wall of text into chat, persists draft answers to a temp JSON file, supports quick review/editing in the TUI, and routes submitted answers back to either the active session or the calling tool flow depending on how it was invoked.",
       "scope": {
-        "part1": "Build the standalone reusable questionnaire engine and expose it through /grill-me with a built-in default question set and zero required arguments.",
+        "part1a": "Done: build the standalone reusable questionnaire engine and expose it through /grill-me with a built-in default question set, review/edit flow, draft persistence, and manual submit-as-user-message behavior.",
+        "part1b": "Next: expand /grill-me into a dynamic context-aware clarification system that generates targeted questions from the current session, accepts optional manual focus args, and exposes an agent-callable grill_me tool so pi can ask for clarification interactively mid-workflow.",
         "part2": "Wire the same questionnaire engine into the future clarification workflow so feature planning can generate questions, collect answers, and write clarifications back into PRD.md and per-feature markdown files."
+      },
+      "implementationReview": {
+        "summary": "The initial implementation aligns well with the earlier narrow Part 1 plan, but only partially aligns with the current product vision.",
+        "alignment": {
+          "oldPlanPart1": "strong",
+          "currentVision": "partial"
+        },
+        "strengths": [
+          "project-local pi extension structure is good",
+          "questionnaire engine is already reasonably reusable internally",
+          "TUI flow is clean and tested",
+          "draft persistence works",
+          "lint, typecheck, and tests pass"
+        ],
+        "findings": [
+          {
+            "severity": "high",
+            "area": "entrypoints",
+            "summary": "Current implementation only exposes /grill-me as a slash command, so the model cannot invoke the clarification flow itself."
+          },
+          {
+            "severity": "high",
+            "area": "questionSource",
+            "summary": "Question source is hard-coded to the bundled default questionnaire and does not derive questions from session context or optional args."
+          },
+          {
+            "severity": "medium",
+            "area": "submitSafety",
+            "summary": "Draft deletion happens before message handoff succeeds, creating an avoidable data-loss path on submit."
+          },
+          {
+            "severity": "medium",
+            "area": "persistencePerformance",
+            "summary": "Draft persistence currently uses synchronous writes on every keystroke, which risks unnecessary TUI lag."
+          }
+        ],
+        "keyConsiderations": [
+          "tool, not just command",
+          "question source abstraction with built-in preset as fallback only",
+          "context-to-questions flow should use session, feature, PRD, and optional focus text",
+          "safe submit semantics must delete drafts only after successful handoff",
+          "the reusable questionnaire engine is the primary asset and should not be overfit to /grill-me"
+        ]
       },
       "decisions": {
         "command": "/grill-me",
-        "commandArgs": "none",
-        "questionSourceV1": "built-in default questionnaire bundled with the extension",
+        "commandArgs": {
+          "mode": "optional freeform focus string",
+          "examples": [
+            "/grill-me",
+            "/grill-me api auth edge cases",
+            "/grill-me clarify MVP scope"
+          ]
+        },
+        "tool": {
+          "name": "grill_me",
+          "purpose": "let the agent ask the user structured clarification questions instead of emitting a large question block in chat",
+          "focusArg": "optional freeform focus string supplied by the agent",
+          "resultDelivery": "returns structured answers as the tool result in the same turn"
+        },
+        "invocationModes": {
+          "manualCommand": "user runs /grill-me [focus] and submitted answers are sent back into the active session as a normal user message",
+          "agentTool": "agent calls grill_me during a turn and receives structured answers as the tool result without sendUserMessage"
+        },
+        "questionSource": {
+          "directDefinitionInjection": "first-class for future planner and workflow integrations",
+          "generatedFromContext": "first-class for /grill-me and grill_me in the expanded part 1 scope",
+          "manualFocusArg": "include optional /grill-me arg as an explicit focus signal",
+          "agentFocusArg": "allow the tool call to pass a focus string to steer question generation",
+          "fallback": "use the bundled default questionnaire only when generation or direct injection cannot produce a sensible targeted set"
+        },
+        "questionGeneration": {
+          "shape": "generated questions must match the shared questionnaire schema",
+          "targetCount": "prefer a short focused set, usually 3 to 7 questions, instead of a large survey",
+          "qualityBar": [
+            "questions should be specific to the current task or ambiguity",
+            "questions should avoid asking for information already present in the session",
+            "questions should be ordered to minimize scrolling and context switching",
+            "questions should remain answerable as single-line responses in v1"
+          ]
+        },
         "questionSchema": {
           "fields": [
             "id",
@@ -75,6 +152,15 @@
             "recommendation is optional and only shown when present"
           ]
         },
+        "manualCommandBehavior": {
+          "requiresIdle": true,
+          "questionnaireSource": "generate from current context plus optional arg, with bundled fallback only as a backup",
+          "submitFlow": "send a wrapped JSON payload back into the active pi session as a normal user message"
+        },
+        "agentToolBehavior": {
+          "questionnaireSource": "generate from current context plus optional tool focus arg, with bundled fallback only as a backup",
+          "submitFlow": "return structured answers as the tool result in the same turn so the agent can continue immediately"
+        },
         "answerBehavior": {
           "singleLineOnly": true,
           "enter": "save current answer and advance to next question",
@@ -84,7 +170,7 @@
         },
         "reviewBehavior": {
           "mode": "review list with native up/down selection",
-          "answerRows": "selecting an answer row with Enter returns to that question for editing",
+          "answerRows": "selecting an answer row with Enter returns to that question for editing and then returns immediately to review after save",
           "submitAction": "submit appears as a selectable review action instead of a custom hotkey",
           "cancelAction": "cancel appears as a selectable review action and also remains available via Escape"
         },
@@ -92,21 +178,49 @@
           "path": ".pi/tmp/grill-me.json",
           "overwriteOnStart": true,
           "updateDuringSession": true,
+          "updateStrategy": {
+            "typing": "debounced persistence during active editing instead of synchronous disk writes on every keystroke",
+            "forceFlushOn": [
+              "enter",
+              "shiftTab",
+              "escape",
+              "submit",
+              "cancel"
+            ],
+            "objective": "preserve in-progress answers while keeping the TUI responsive"
+          },
           "keepOnCancel": true,
-          "keepOnSubmit": false
+          "keepOnSubmit": false,
+          "deleteAfterSuccessfulHandoff": true,
+          "keepOnHandoffFailure": true
         },
         "submitBehavior": {
-          "mode": "send a wrapped JSON payload back into the active pi session as a normal user message",
-          "wrapper": "Here are my answers from /grill-me:",
-          "resultShape": {
-            "title": "string",
-            "responses": [
-              {
-                "id": "string",
-                "question": "string",
-                "answer": "string"
-              }
-            ]
+          "manualCommand": {
+            "mode": "send a wrapped JSON payload back into the active pi session as a normal user message",
+            "wrapper": "Here are my answers from /grill-me:",
+            "resultShape": {
+              "title": "string",
+              "responses": [
+                {
+                  "id": "string",
+                  "question": "string",
+                  "answer": "string"
+                }
+              ]
+            }
+          },
+          "agentTool": {
+            "mode": "return structured answers as the tool result in the same turn",
+            "resultShape": {
+              "title": "string",
+              "responses": [
+                {
+                  "id": "string",
+                  "question": "string",
+                  "answer": "string"
+                }
+              ]
+            }
           }
         },
         "documentNaming": {
@@ -114,7 +228,7 @@
           "perFeature": "001-name.md style feature files"
         }
       },
-      "defaultQuestionsV1": {
+      "defaultQuestionsFallback": {
         "title": "Design Clarification",
         "questions": [
           {
@@ -176,18 +290,22 @@
         ".pi/extensions/grill-me/questions.ts",
         ".pi/extensions/grill-me/questionnaire.ts",
         ".pi/extensions/grill-me/ui.ts",
+        ".pi/extensions/grill-me/generator.ts",
         "tests/unit/grill-me-types.test.ts",
         "tests/unit/grill-me-storage.test.ts",
         "tests/unit/grill-me-questions.test.ts",
         "tests/unit/grill-me-ui-state.test.ts",
+        "tests/unit/grill-me-questionnaire.test.ts",
+        "tests/unit/grill-me-generator.test.ts",
         "tests/integration/grill-me-command.test.ts",
-        "tests/integration/grill-me-submit.test.ts"
+        "tests/integration/grill-me-submit.test.ts",
+        "tests/integration/grill-me-tool.test.ts"
       ],
       "workItems": [
         {
           "id": "G001",
           "title": "Define questionnaire and response types",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [],
           "goal": "Create the stable internal data model for questions, answers, draft state, and submission payloads so the UI and future planners share the same contract.",
           "files": [
@@ -198,7 +316,7 @@
         {
           "id": "G002",
           "title": "Implement temp draft storage",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G001"
           ],
@@ -211,11 +329,11 @@
         {
           "id": "G003",
           "title": "Create built-in default questionnaire source",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G001"
           ],
-          "goal": "Bundle a sensible default design-grilling questionnaire so /grill-me works with zero arguments and no external files.",
+          "goal": "Bundle a sensible default design-grilling questionnaire as a fallback source for cases where dynamic generation cannot produce a useful targeted set.",
           "files": [
             ".pi/extensions/grill-me/questions.ts",
             "tests/unit/grill-me-questions.test.ts"
@@ -224,7 +342,7 @@
         {
           "id": "G004",
           "title": "Build one-question-at-a-time TUI flow",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G001",
             "G002",
@@ -234,7 +352,8 @@
           "files": [
             ".pi/extensions/grill-me/ui.ts",
             ".pi/extensions/grill-me/questionnaire.ts",
-            "tests/unit/grill-me-ui-state.test.ts"
+            "tests/unit/grill-me-ui-state.test.ts",
+            "tests/unit/grill-me-questionnaire.test.ts"
           ],
           "acceptanceNotes": [
             "Question screen shows title, question number, progress, current question, optional recommendation, and answer input",
@@ -244,8 +363,8 @@
         },
         {
           "id": "G005",
-          "title": "Register /grill-me and submit results back into session",
-          "status": "planned",
+          "title": "Register manual /grill-me and submit results back into session",
+          "status": "complete",
           "dependsOn": [
             "G002",
             "G003",
@@ -261,15 +380,107 @@
         {
           "id": "G006",
           "title": "Stabilize a reusable questionnaire API for future planning workflows",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G005"
           ],
-          "goal": "Keep the questionnaire runner generic so part 2 can supply generated per-feature questions without rewriting the UI or storage logic.",
+          "goal": "Keep the questionnaire runner generic so later flows can supply generated question sets without rewriting the UI or storage logic.",
           "files": [
             ".pi/extensions/grill-me/questionnaire.ts",
             ".pi/extensions/grill-me/types.ts",
             "tests/unit/grill-me-types.test.ts"
+          ]
+        },
+        {
+          "id": "G007",
+          "title": "Add question source abstraction and context-aware generation",
+          "status": "planned",
+          "dependsOn": [
+            "G006"
+          ],
+          "goal": "Build a generator that reads the current session context plus an optional focus string and produces a short targeted questionnaire matching the shared schema. Treat direct definition injection and generated definitions as first-class, and use the bundled default questionnaire only as a fallback.",
+          "files": [
+            ".pi/extensions/grill-me/generator.ts",
+            ".pi/extensions/grill-me/questions.ts",
+            ".pi/extensions/grill-me/questionnaire.ts",
+            "tests/unit/grill-me-generator.test.ts",
+            "tests/unit/grill-me-questions.test.ts"
+          ]
+        },
+        {
+          "id": "G008",
+          "title": "Add agent-callable grill_me clarification tool",
+          "status": "planned",
+          "dependsOn": [
+            "G007"
+          ],
+          "goal": "Register a custom tool the agent can call when it needs clarification, launch the same questionnaire UI during tool execution, and return structured answers as the tool result in the same turn.",
+          "files": [
+            ".pi/extensions/grill-me/index.ts",
+            ".pi/extensions/grill-me/questionnaire.ts",
+            ".pi/extensions/grill-me/types.ts",
+            "tests/integration/grill-me-tool.test.ts"
+          ]
+        },
+        {
+          "id": "G009",
+          "title": "Expand /grill-me to accept optional focus args and generated questions",
+          "status": "planned",
+          "dependsOn": [
+            "G007"
+          ],
+          "goal": "Change /grill-me from preset-first behavior to context-aware generation, incorporate optional user-supplied focus text, and keep the existing idle-only behavior and manual submit-as-user-message flow.",
+          "files": [
+            ".pi/extensions/grill-me/index.ts",
+            ".pi/extensions/grill-me/generator.ts",
+            "tests/integration/grill-me-command.test.ts",
+            "tests/integration/grill-me-submit.test.ts"
+          ]
+        },
+        {
+          "id": "G010",
+          "title": "Make submit and cleanup semantics failure-safe",
+          "status": "planned",
+          "dependsOn": [
+            "G008",
+            "G009"
+          ],
+          "goal": "Move draft deletion out of the generic questionnaire runner and only delete the draft after successful session handoff or successful tool completion. Preserve the completed draft if delivery fails.",
+          "files": [
+            ".pi/extensions/grill-me/index.ts",
+            ".pi/extensions/grill-me/questionnaire.ts",
+            "tests/unit/grill-me-questionnaire.test.ts",
+            "tests/integration/grill-me-submit.test.ts",
+            "tests/integration/grill-me-tool.test.ts"
+          ]
+        },
+        {
+          "id": "G011",
+          "title": "Debounce draft persistence while force-flushing on navigation boundaries",
+          "status": "planned",
+          "dependsOn": [
+            "G004"
+          ],
+          "goal": "Keep in-progress answers recoverable without performing synchronous disk writes on every keystroke. Persist through a short debounce during typing, and force-flush on Enter, Shift+Tab, Escape, submit, and cancel.",
+          "files": [
+            ".pi/extensions/grill-me/storage.ts",
+            ".pi/extensions/grill-me/ui.ts",
+            ".pi/extensions/grill-me/questionnaire.ts",
+            "tests/unit/grill-me-questionnaire.test.ts",
+            "tests/unit/grill-me-ui-state.test.ts"
+          ]
+        },
+        {
+          "id": "G012",
+          "title": "Teach the agent to prefer grill_me over long clarification blocks",
+          "status": "planned",
+          "dependsOn": [
+            "G008"
+          ],
+          "goal": "Add tool prompt metadata and invocation guidance so the extension advertises itself as the preferred clarification path when the agent needs multiple user answers but the user should stay in a compact one-question-at-a-time flow.",
+          "files": [
+            ".pi/extensions/grill-me/index.ts",
+            "tests/integration/grill-me-tool.test.ts"
           ]
         }
       ],
