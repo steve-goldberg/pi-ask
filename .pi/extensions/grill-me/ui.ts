@@ -321,6 +321,12 @@ export class QuestionnaireComponent implements Component, Focusable {
 
   private handleQuestionInput(data: string): void {
     if (matchesKey(data, Key.escape)) {
+      if (this.editor.isShowingAutocomplete()) {
+        this.editor.handleInput(data);
+        this.stateChanged();
+        return;
+      }
+
       this.syncEditorToState({ flush: true });
       this.onDone({ status: "cancelled", answers: this.state.answers });
       return;

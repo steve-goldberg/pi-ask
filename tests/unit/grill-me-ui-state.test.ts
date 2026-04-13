@@ -73,6 +73,10 @@ function typeText(component: QuestionnaireComponent, text: string) {
   }
 }
 
+function getInternalEditor(component: QuestionnaireComponent): { isShowingAutocomplete(): boolean } {
+  return (component as unknown as { editor: { isShowingAutocomplete(): boolean } }).editor;
+}
+
 const ESC = String.fromCharCode(27);
 const ANSI_ESCAPE_PATTERN = new RegExp(`${ESC}\\[[0-9;?]*[ -/]*[@-~]`, "g");
 
@@ -205,5 +209,34 @@ describe("grill-me ui state", () => {
     });
 
     expect(persisted.at(-1)?.one).toBe("Use @progress.json ");
+  });
+
+  it("dismisses autocomplete on escape before cancelling the questionnaire", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "grill-me-ui-"));
+    writeFileSync(join(cwd, "progress.json"), "{}\n");
+    writeFileSync(join(cwd, "profile.json"), "{}\n");
+
+    const { component, persisted, onDone } = createComponent({ cwd });
+    const editor = getInternalEditor(component);
+
+    typeText(component, "Use @pro");
+    component.handleInput("\t");
+
+    await vi.waitFor(() => {
+      expect(editor.isShowingAutocomplete()).toBe(true);
+    });
+
+    component.handleInput(ESC);
+
+    expect(onDone).not.toHaveBeenCalled();
+    expect(editor.isShowingAutocomplete()).toBe(false);
+    expect(persisted.at(-1)?.one).toBe("Use @pro");
+
+    component.handleInput(ESC);
+
+    expect(onDone).toHaveBeenCalledWith({
+      status: "cancelled",
+      answers: { one: "Use @pro" },
+    });
   });
 });
