@@ -1,3 +1,7 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const resolveQuestionnaireDefinitionMock = vi.fn();
@@ -46,7 +50,7 @@ describe("/grill-me command", () => {
 
     expect(pi.registerCommand).toHaveBeenCalledWith(
       "grill-me",
-      expect.objectContaining({ description: expect.stringContaining("dynamic clarification questionnaire") }),
+      expect.objectContaining({ description: expect.stringContaining("grounded clarification questionnaire") }),
     );
   });
 
@@ -90,12 +94,18 @@ describe("/grill-me command", () => {
     expect(runQuestionnaireMock).not.toHaveBeenCalled();
   });
 
-  it("passes optional focus args into the dynamic generator", async () => {
+  it("passes optional focus args and explicit artifact hints into grounded resolution", async () => {
     resolveQuestionnaireDefinitionMock.mockResolvedValueOnce({
       source: "generated",
       definition: {
         title: "Auth Clarification",
         questions: [{ id: "one", question: "What auth method?", multiline: false }],
+      },
+      provenance: {
+        source: "generated",
+        grounding: ["explicit artifacts", "session context"],
+        artifactsUsed: ["plan.json", "PRD.md"],
+        contextSufficiency: "sufficient",
       },
     });
     runQuestionnaireMock.mockResolvedValueOnce({
@@ -114,12 +124,17 @@ describe("/grill-me command", () => {
     module.default(pi as never);
 
     const [, command] = pi.registerCommand.mock.calls[0];
-    const ctx = createContext();
+    const root = mkdtempSync(join(tmpdir(), "grill-me-command-"));
+    writeFileSync(join(root, "plan.json"), "{}\n");
+    writeFileSync(join(root, "PRD.md"), "# PRD\n");
 
-    await command.handler("clarify auth edge cases", ctx);
+    const ctx = createContext({ cwd: root });
+
+    await command.handler("clarify auth edge cases using @plan.json and @PRD.md", ctx);
 
     expect(resolveQuestionnaireDefinitionMock).toHaveBeenCalledWith(ctx, {
-      focus: "clarify auth edge cases",
+      focus: "clarify auth edge cases using @plan.json and @PRD.md",
+      artifacts: ["plan.json", "PRD.md"],
       fallbackDefinition: expect.objectContaining({ title: "Design Clarification" }),
     });
     expect(runQuestionnaireMock).toHaveBeenCalledWith(ctx, {
@@ -128,5 +143,9 @@ describe("/grill-me command", () => {
         questions: [{ id: "one", question: "What auth method?", multiline: false }],
       },
     });
+    expect(ctx.ui.notify).toHaveBeenCalledWith(
+      "Opening /grill-me. Grounding: explicit artifacts, session context • Artifacts: plan.json, PRD.md • Context: sufficient",
+      "info",
+    );
   });
 });

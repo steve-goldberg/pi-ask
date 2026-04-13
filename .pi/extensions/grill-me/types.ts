@@ -31,9 +31,26 @@ export interface QuestionnaireSubmissionPayload {
 
 export type QuestionnaireDefinitionSource = "provided" | "generated" | "fallback";
 
+export type QuestionnaireGroundingKind =
+  | "provided definition"
+  | "explicit artifacts"
+  | "session context"
+  | "thin-context generation"
+  | "fallback questionnaire";
+
+export type QuestionnaireContextSufficiency = "not_applicable" | "thin" | "sufficient";
+
+export interface QuestionnaireProvenance {
+  source: QuestionnaireDefinitionSource;
+  grounding: QuestionnaireGroundingKind[];
+  artifactsUsed: string[];
+  contextSufficiency: QuestionnaireContextSufficiency;
+}
+
 export interface ResolvedQuestionnaireDefinition {
   definition: QuestionnaireDefinition;
   source: QuestionnaireDefinitionSource;
+  provenance: QuestionnaireProvenance;
 }
 
 export interface QuestionnaireCancelledResult {
@@ -54,6 +71,9 @@ export type QuestionnaireRunResult = QuestionnaireCancelledResult | Questionnair
 export interface GrillMeToolResultDetails {
   status: "cancelled" | "submitted";
   source: QuestionnaireDefinitionSource;
+  grounding: QuestionnaireGroundingKind[];
+  artifactsUsed: string[];
+  contextSufficiency: QuestionnaireContextSufficiency;
   draftPath: string;
   answers: QuestionnaireAnswers;
   payload?: QuestionnaireSubmissionPayload;
@@ -116,4 +136,14 @@ export function formatSubmissionJson(payload: QuestionnaireSubmissionPayload): s
 
 export function formatSubmissionMessage(payload: QuestionnaireSubmissionPayload): string {
   return `Here are my answers from /grill-me:\n\n${formatSubmissionJson(payload)}`;
+}
+
+export function formatQuestionnaireProvenance(provenance: QuestionnaireProvenance): string {
+  const grounding = provenance.grounding.join(", ");
+  const artifacts = provenance.artifactsUsed.length > 0 ? provenance.artifactsUsed.join(", ") : "none";
+  const contextSufficiency = provenance.contextSufficiency === "not_applicable"
+    ? "n/a"
+    : provenance.contextSufficiency;
+
+  return `Grounding: ${grounding} • Artifacts: ${artifacts} • Context: ${contextSufficiency}`;
 }

@@ -1,3 +1,7 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const completeMock = vi.fn();
@@ -6,8 +10,40 @@ vi.mock("@mariozechner/pi-ai", () => ({
   complete: completeMock,
 }));
 
-function createContext(overrides: Record<string, unknown> = {}) {
+function createStrongSessionBranch() {
+  return [
+    {
+      type: "message",
+      message: {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text:
+              "We are refining a planning workflow for a project-local pi extension. The immediate goal is to improve the clarification flow so it reads explicit artifacts first, avoids fake-specific questions in thin sessions, and reports what grounding it used before asking the user anything deeper.",
+          },
+        ],
+      },
+    },
+    {
+      type: "message",
+      message: {
+        role: "assistant",
+        content: [
+          {
+            type: "text",
+            text:
+              "I should anchor the next clarification round on real artifacts when they are provided, combine that with recent conversation context, and only ask artifact-specific questions if those files were actually read. I also need provenance so the user can see what the questionnaire was based on.",
+          },
+        ],
+      },
+    },
+  ];
+}
+
+function createContext(root: string, overrides: Record<string, unknown> = {}) {
   return {
+    cwd: root,
     model: { id: "test-model", provider: "test" },
     signal: undefined,
     modelRegistry: {
@@ -15,22 +51,7 @@ function createContext(overrides: Record<string, unknown> = {}) {
     },
     sessionManager: {
       getSessionName: () => "Planner Session",
-      getBranch: () => [
-        {
-          type: "message",
-          message: {
-            role: "user",
-            content: [{ type: "text", text: "We need to clarify the auth flow and first release scope." }],
-          },
-        },
-        {
-          type: "message",
-          message: {
-            role: "assistant",
-            content: [{ type: "text", text: "I need to know the login requirements and edge cases." }],
-          },
-        },
-      ],
+      getBranch: () => createStrongSessionBranch(),
     },
     ...overrides,
   };
@@ -43,6 +64,7 @@ describe("grill-me generator", () => {
   });
 
   it("uses a provided definition without calling the model", async () => {
+    const root = mkdtempSync(join(tmpdir(), "grill-me-generator-"));
     const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/grill-me/generator.js");
 
     const providedDefinition = {
@@ -50,28 +72,62 @@ describe("grill-me generator", () => {
       questions: [{ id: "scope", question: "What is in scope?", multiline: false }],
     };
 
-    const result = await resolveQuestionnaireDefinition(createContext() as never, {
+    const result = await resolveQuestionnaireDefinition(createContext(root) as never, {
       definition: providedDefinition,
     });
 
     expect(result).toEqual({
       definition: providedDefinition,
       source: "provided",
+      provenance: {
+        source: "provided",
+        grounding: ["provided definition"],
+        artifactsUsed: [],
+        contextSufficiency: "not_applicable",
+      },
     });
     expect(completeMock).not.toHaveBeenCalled();
   });
 
-  it("generates a dynamic questionnaire from session context and focus", async () => {
+  it("reads explicit artifacts before generating grounded questions", async () => {
+    const root = mkdtempSync(join(tmpdir(), "grill-me-generator-"));
+    writeFileSync(
+      join(root, "plan.json"),
+      JSON.stringify(
+        {
+          sections: {
+            grillMe: {
+              goal: "Ground question generation on explicit artifacts before asking file-specific questions.",
+              findings: [
+                "Current generation only uses session context and optional focus.",
+                "Thin sessions can trigger fake-specific questions about unseen files.",
+              ],
+            },
+          },
+        },
+        null,
+        2,
+      ),
+    );
+
     completeMock.mockResolvedValueOnce({
       content: [
         {
           type: "text",
           text: JSON.stringify(
             {
-              title: "Auth Clarification",
+              title: "Grounded Plan Clarification",
               questions: [
-                { id: "login_method", question: "Which login methods must v1 support?", multiline: false },
-                { id: "roles", question: "Which user roles matter in the first release?", multiline: false },
+                {
+                  id: "gap",
+                  question: "Which grounding gap in plan.json must we fix first?",
+                  multiline: false,
+                },
+                {
+                  id: "proof",
+                  question: "What should prove that explicit artifact grounding is working?",
+                  multiline: false,
+                },
               ],
             },
             null,
@@ -82,19 +138,30 @@ describe("grill-me generator", () => {
     });
 
     const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/grill-me/generator.js");
-    const ctx = createContext();
+    const ctx = createContext(root);
 
     const result = await resolveQuestionnaireDefinition(ctx as never, {
-      focus: "clarify auth edge cases",
+      focus: "refine the grounding behavior",
+      artifacts: ["plan.json"],
     });
 
     expect(result.source).toBe("generated");
     expect(result.definition).toEqual({
-      title: "Auth Clarification",
+      title: "Grounded Plan Clarification",
       questions: [
-        { id: "login_method", question: "Which login methods must v1 support?", multiline: false },
-        { id: "roles", question: "Which user roles matter in the first release?", multiline: false },
+        { id: "gap", question: "Which grounding gap in plan.json must we fix first?", multiline: false },
+        {
+          id: "proof",
+          question: "What should prove that explicit artifact grounding is working?",
+          multiline: false,
+        },
       ],
+    });
+    expect(result.provenance).toEqual({
+      source: "generated",
+      grounding: expect.arrayContaining(["explicit artifacts", "session context"]),
+      artifactsUsed: ["plan.json"],
+      contextSufficiency: "sufficient",
     });
     expect(completeMock).toHaveBeenCalledTimes(1);
     expect(completeMock.mock.calls[0]?.[1]).toMatchObject({
@@ -104,26 +171,97 @@ describe("grill-me generator", () => {
           content: [
             {
               type: "text",
-              text: expect.stringContaining("clarify auth edge cases"),
+              text: expect.stringContaining("Artifact: plan.json"),
             },
           ],
         },
       ],
     });
+    expect(completeMock.mock.calls[0]?.[1]?.messages?.[0]?.content?.[0]?.text).toContain(
+      "Ground question generation on explicit artifacts before asking file-specific questions.",
+    );
   });
 
-  it("falls back to the bundled questionnaire when generation is unavailable", async () => {
+  it("switches to an exploratory thin-context questionnaire instead of pretending to know unseen files", async () => {
+    const root = mkdtempSync(join(tmpdir(), "grill-me-generator-"));
+    const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/grill-me/generator.js");
+
+    const result = await resolveQuestionnaireDefinition(
+      createContext(root, {
+        sessionManager: {
+          getSessionName: () => "Fresh Session",
+          getBranch: () => [
+            {
+              type: "message",
+              message: {
+                role: "user",
+                content: [{ type: "text", text: "Help me tighten the plan." }],
+              },
+            },
+          ],
+        },
+      }) as never,
+      { focus: "clarify the plan" },
+    );
+
+    expect(result).toEqual({
+      source: "generated",
+      definition: {
+        title: "Grounded Clarification Kickoff",
+        questions: [
+          {
+            id: "outcome",
+            question: "For “clarify the plan”, what do you want this clarification round to produce?",
+            multiline: false,
+          },
+          {
+            id: "artifact",
+            question: "Which artifact or file should I base this on first?",
+            multiline: false,
+            recommendation:
+              "Mention a concrete file path like @plan.json or @PRD.md if an artifact should anchor this round.",
+          },
+          {
+            id: "ambiguity",
+            question: "What decision, ambiguity, or risk matters most right now?",
+            multiline: false,
+          },
+        ],
+      },
+      provenance: {
+        source: "generated",
+        grounding: expect.arrayContaining(["session context", "thin-context generation"]),
+        artifactsUsed: [],
+        contextSufficiency: "thin",
+      },
+    });
+    expect(completeMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back only after grounded generation is unavailable", async () => {
+    const root = mkdtempSync(join(tmpdir(), "grill-me-generator-"));
+    writeFileSync(join(root, "PRD.md"), "# PRD\n\nExplicitly ground the next clarification round on this file.\n");
+
     const { DEFAULT_GRILL_ME_QUESTIONNAIRE } = await import("../../.pi/extensions/grill-me/questions.js");
     const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/grill-me/generator.js");
 
     const result = await resolveQuestionnaireDefinition(
-      createContext({ model: undefined }) as never,
-      { focus: "clarify scope" },
+      createContext(root, { model: undefined }) as never,
+      {
+        focus: "clarify the grounding requirements",
+        artifacts: ["PRD.md"],
+      },
     );
 
     expect(result).toEqual({
       definition: DEFAULT_GRILL_ME_QUESTIONNAIRE,
       source: "fallback",
+      provenance: {
+        source: "fallback",
+        grounding: expect.arrayContaining(["explicit artifacts", "session context", "fallback questionnaire"]),
+        artifactsUsed: ["PRD.md"],
+        contextSufficiency: "sufficient",
+      },
     });
     expect(completeMock).not.toHaveBeenCalled();
   });

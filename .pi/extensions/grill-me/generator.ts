@@ -1,10 +1,18 @@
 import { complete } from "@mariozechner/pi-ai";
 import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 
+import {
+  buildGroundedQuestionGenerationPrompt,
+  createThinContextQuestionnaireDefinition,
+  resolveGroundedQuestionnaireContext,
+  type GroundedQuestionnaireContext,
+  type ResolveGroundingOptions,
+} from "./grounding.js";
 import { DEFAULT_GRILL_ME_QUESTIONNAIRE } from "./questions.js";
 import type {
   QuestionnaireDefinition,
   QuestionnaireDefinitionSource,
+  QuestionnaireProvenance,
   ResolvedQuestionnaireDefinition,
 } from "./types.js";
 import { validateQuestionnaireDefinition } from "./types.js";
@@ -26,27 +34,26 @@ Return ONLY a JSON object with this exact shape:
 
 Rules:
 - Generate 3 to 7 questions when possible.
-- Ask only for information that is still ambiguous from the context.
-- Do not ask for information already clearly present in the context.
+- Use only the grounded context that is explicitly provided in the prompt.
+- Do not ask file-specific questions unless the file content is present in the prompt.
+- Ask only for information that is still ambiguous from the grounded context.
+- Do not ask for information already clearly present in the grounded context.
 - Keep each question concrete and answerable in one short line.
 - Order questions to minimize context switching.
 - multiline must always be false.
 - recommendation is optional and should only be included when it genuinely helps the user answer quickly.
 - Return JSON only, with no markdown fence and no explanatory text.`;
 
-const MAX_CONTEXT_ENTRIES = 14;
-const MAX_CONTEXT_CHARS = 12_000;
 const MAX_GENERATED_QUESTIONS = 7;
 const DEFAULT_TITLE = "Design Clarification";
 
-export interface ResolveQuestionnaireDefinitionOptions {
-  focus?: string;
+export interface ResolveQuestionnaireDefinitionOptions extends ResolveGroundingOptions {
   definition?: QuestionnaireDefinition;
   fallbackDefinition?: QuestionnaireDefinition;
 }
 
 export async function resolveQuestionnaireDefinition(
-  ctx: Pick<ExtensionContext, "model" | "modelRegistry" | "sessionManager" | "signal">,
+  ctx: Pick<ExtensionContext, "cwd" | "model" | "modelRegistry" | "sessionManager" | "signal">,
   options: ResolveQuestionnaireDefinitionOptions = {},
 ): Promise<ResolvedQuestionnaireDefinition> {
   if (options.definition) {
@@ -54,14 +61,36 @@ export async function resolveQuestionnaireDefinition(
     return {
       definition: options.definition,
       source: "provided",
+      provenance: {
+        source: "provided",
+        grounding: ["provided definition"],
+        artifactsUsed: [],
+        contextSufficiency: "not_applicable",
+      },
     };
   }
 
-  const generated = await generateQuestionnaireDefinitionFromContext(ctx, options.focus);
+  const groundedContext = resolveGroundedQuestionnaireContext(ctx, {
+    focus: options.focus,
+    artifacts: options.artifacts,
+  });
+
+  if (groundedContext.contextSufficiency === "thin") {
+    const definition = createThinContextQuestionnaireDefinition(groundedContext);
+    validateQuestionnaireDefinition(definition);
+    return {
+      definition,
+      source: "generated",
+      provenance: createProvenance("generated", groundedContext),
+    };
+  }
+
+  const generated = await generateQuestionnaireDefinitionFromContext(ctx, groundedContext);
   if (generated) {
     return {
       definition: generated,
       source: "generated",
+      provenance: createProvenance("generated", groundedContext),
     };
   }
 
@@ -70,14 +99,15 @@ export async function resolveQuestionnaireDefinition(
   return {
     definition: fallbackDefinition,
     source: "fallback",
+    provenance: createProvenance("fallback", groundedContext),
   };
 }
 
 export async function generateQuestionnaireDefinitionFromContext(
-  ctx: Pick<ExtensionContext, "model" | "modelRegistry" | "sessionManager" | "signal">,
-  focus?: string,
+  ctx: Pick<ExtensionContext, "model" | "modelRegistry" | "signal">,
+  groundedContext: GroundedQuestionnaireContext,
 ): Promise<QuestionnaireDefinition | undefined> {
-  const prompt = buildQuestionGenerationPrompt(ctx.sessionManager, focus);
+  const prompt = buildGroundedQuestionGenerationPrompt(groundedContext);
   if (!prompt || !ctx.model) {
     return undefined;
   }
@@ -119,38 +149,6 @@ export async function generateQuestionnaireDefinitionFromContext(
   }
 }
 
-export function buildQuestionGenerationPrompt(
-  sessionManager: Pick<ExtensionContext["sessionManager"], "getBranch" | "getSessionName">,
-  focus?: string,
-): string | undefined {
-  const sessionName = sessionManager.getSessionName();
-  const excerpt = buildContextExcerpt(sessionManager.getBranch());
-  const trimmedFocus = focus?.trim();
-
-  if (!excerpt && !trimmedFocus) {
-    return undefined;
-  }
-
-  const lines = [
-    "Build a concise clarification questionnaire for the current conversation.",
-  ];
-
-  if (sessionName) {
-    lines.push(`Session name: ${sessionName}`);
-  }
-
-  if (trimmedFocus) {
-    lines.push(`Explicit focus: ${trimmedFocus}`);
-  }
-
-  if (excerpt) {
-    lines.push("Recent conversation context:");
-    lines.push(excerpt);
-  }
-
-  return lines.join("\n\n");
-}
-
 export function parseGeneratedQuestionnaireDefinition(text: string): QuestionnaireDefinition | undefined {
   if (!text.trim()) {
     return undefined;
@@ -163,114 +161,6 @@ export function parseGeneratedQuestionnaireDefinition(text: string): Questionnai
   } catch {
     return undefined;
   }
-}
-
-function buildContextExcerpt(entries: ReturnType<ExtensionContext["sessionManager"]["getBranch"]>): string {
-  const blocks: string[] = [];
-
-  for (const entry of entries.slice(-MAX_CONTEXT_ENTRIES)) {
-    if (entry.type !== "message") {
-      continue;
-    }
-
-    const message = entry.message as {
-      role?: string;
-      content?: unknown;
-      toolName?: string;
-    };
-
-    if (message.role === "user") {
-      const text = stringifyMessageContent(message.content);
-      if (text) {
-        blocks.push(`User:\n${text}`);
-      }
-      continue;
-    }
-
-    if (message.role === "assistant") {
-      const text = stringifyAssistantContent(message.content);
-      if (text) {
-        blocks.push(`Assistant:\n${text}`);
-      }
-      continue;
-    }
-
-    if (message.role === "custom") {
-      const text = stringifyMessageContent(message.content);
-      if (text) {
-        blocks.push(`Extension context:\n${text}`);
-      }
-      continue;
-    }
-
-    if (message.role === "toolResult") {
-      const text = stringifyMessageContent(message.content);
-      if (text) {
-        const toolName = message.toolName ?? "tool";
-        blocks.push(`Tool result (${toolName}):\n${text}`);
-      }
-    }
-  }
-
-  const excerpt = blocks.join("\n\n---\n\n");
-  if (excerpt.length <= MAX_CONTEXT_CHARS) {
-    return excerpt;
-  }
-  return excerpt.slice(-MAX_CONTEXT_CHARS);
-}
-
-function stringifyMessageContent(content: unknown): string {
-  if (typeof content === "string") {
-    return content.trim();
-  }
-
-  if (!Array.isArray(content)) {
-    return "";
-  }
-
-  return content
-    .flatMap((block) => {
-      if (!block || typeof block !== "object") {
-        return [];
-      }
-
-      const typedBlock = block as { type?: string; text?: string };
-      if (typedBlock.type === "text" && typeof typedBlock.text === "string") {
-        return [typedBlock.text.trim()];
-      }
-
-      return [];
-    })
-    .filter(Boolean)
-    .join("\n")
-    .trim();
-}
-
-function stringifyAssistantContent(content: unknown): string {
-  if (!Array.isArray(content)) {
-    return "";
-  }
-
-  return content
-    .flatMap((block) => {
-      if (!block || typeof block !== "object") {
-        return [];
-      }
-
-      const typedBlock = block as { type?: string; text?: string; name?: string };
-      if (typedBlock.type === "text" && typeof typedBlock.text === "string") {
-        return [typedBlock.text.trim()];
-      }
-
-      if (typedBlock.type === "toolCall" && typeof typedBlock.name === "string") {
-        return [`[tool call: ${typedBlock.name}]`];
-      }
-
-      return [];
-    })
-    .filter(Boolean)
-    .join("\n")
-    .trim();
 }
 
 function extractJsonObject(text: string): string {
@@ -375,6 +265,23 @@ function createQuestionId(
   }
   seenIds.add(candidate);
   return candidate;
+}
+
+function createProvenance(
+  source: QuestionnaireDefinitionSource,
+  groundedContext: GroundedQuestionnaireContext,
+): QuestionnaireProvenance {
+  const grounding = new Set(groundedContext.grounding);
+  if (source === "fallback") {
+    grounding.add("fallback questionnaire");
+  }
+
+  return {
+    source,
+    grounding: [...grounding],
+    artifactsUsed: groundedContext.artifactsUsed.map((artifact) => artifact.path),
+    contextSufficiency: groundedContext.contextSufficiency,
+  };
 }
 
 export function getQuestionnaireSourceLabel(source: QuestionnaireDefinitionSource): string {

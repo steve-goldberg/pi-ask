@@ -37,6 +37,12 @@ describe("/grill-me submit flow", () => {
         title: "Design Clarification",
         questions: [{ id: "problem", question: "What are we building?", multiline: false }],
       },
+      provenance: {
+        source: "generated",
+        grounding: ["session context"],
+        artifactsUsed: [],
+        contextSufficiency: "sufficient",
+      },
     });
   });
 

@@ -1,11 +1,13 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
 
+import { extractExplicitArtifactsFromCommandArgs } from "./grounding.js";
 import { resolveQuestionnaireDefinition } from "./generator.js";
 import { DEFAULT_GRILL_ME_QUESTIONNAIRE } from "./questions.js";
 import { runQuestionnaire } from "./questionnaire.js";
 import { removeDraftFile } from "./storage.js";
 import {
+  formatQuestionnaireProvenance,
   formatSubmissionJson,
   formatSubmissionMessage,
   type GrillMeToolResultDetails,
@@ -25,12 +27,15 @@ const QuestionnaireDefinitionSchema = Type.Object({
 
 const GrillMeToolParameters = Type.Object({
   focus: Type.Optional(Type.String({ description: "Optional focus area to steer the clarification questions" })),
+  artifacts: Type.Optional(
+    Type.Array(Type.String({ description: "Explicit file or artifact path to ground on before generation" })),
+  ),
   definition: Type.Optional(QuestionnaireDefinitionSchema),
 });
 
 export default function grillMeExtension(pi: ExtensionAPI) {
   pi.registerCommand("grill-me", {
-    description: "Ask a dynamic clarification questionnaire in the TUI and submit the answers back into this session.",
+    description: "Ask a grounded clarification questionnaire in the TUI and submit the answers back into this session.",
     handler: async (args, ctx) => {
       if (!ctx.hasUI) {
         ctx.ui.notify("/grill-me requires interactive TUI mode.", "error");
@@ -43,10 +48,14 @@ export default function grillMeExtension(pi: ExtensionAPI) {
       }
 
       try {
+        const artifacts = extractExplicitArtifactsFromCommandArgs(args, ctx.cwd);
         const resolution = await resolveQuestionnaireDefinition(ctx, {
           focus: args.trim() || undefined,
+          artifacts,
           fallbackDefinition: DEFAULT_GRILL_ME_QUESTIONNAIRE,
         });
+
+        ctx.ui.notify(`Opening /grill-me. ${formatQuestionnaireProvenance(resolution.provenance)}`, "info");
 
         const result = await runQuestionnaire(ctx, {
           definition: resolution.definition,
@@ -92,12 +101,13 @@ export default function grillMeExtension(pi: ExtensionAPI) {
     name: "grill_me",
     label: "Grill Me",
     description:
-      "Ask the user a short interactive clarification questionnaire in the TUI and return structured answers. Use this instead of dumping a long wall of clarification questions into chat.",
+      "Ask the user a short interactive grounded clarification questionnaire in the TUI and return structured answers. Use this instead of dumping a long wall of clarification questions into chat.",
     promptSnippet:
-      "Ask the user a short interactive clarification questionnaire in the TUI and return structured answers.",
+      "Ask the user a short interactive grounded clarification questionnaire in the TUI and return structured answers.",
     promptGuidelines: [
       "Use grill_me when you need multiple clarification answers from the user and a one-question-at-a-time TUI flow would be better than writing a long question block in chat.",
       "Pass focus when you need to steer the questions toward a specific ambiguity, feature area, or decision.",
+      "Pass artifacts when you want the questionnaire grounded on explicit files or artifact paths before generation.",
       "Pass definition only when you already know the exact questions to ask and want to reuse the questionnaire runner directly.",
     ],
     parameters: GrillMeToolParameters,
@@ -113,6 +123,7 @@ export default function grillMeExtension(pi: ExtensionAPI) {
 
       const resolution = await resolveQuestionnaireDefinition(ctx, {
         focus: params.focus,
+        artifacts: params.artifacts,
         definition: params.definition,
         fallbackDefinition: DEFAULT_GRILL_ME_QUESTIONNAIRE,
       });
@@ -126,7 +137,10 @@ export default function grillMeExtension(pi: ExtensionAPI) {
           content: [{ type: "text", text: "User cancelled the questionnaire." }],
           details: {
             status: "cancelled",
-            source: resolution.source,
+            source: resolution.provenance.source,
+            grounding: resolution.provenance.grounding,
+            artifactsUsed: resolution.provenance.artifactsUsed,
+            contextSufficiency: resolution.provenance.contextSufficiency,
             draftPath: result.draftPath,
             answers: result.answers,
           } satisfies GrillMeToolResultDetails,
@@ -143,7 +157,10 @@ export default function grillMeExtension(pi: ExtensionAPI) {
         content: [{ type: "text", text: formatSubmissionJson(result.payload) }],
         details: {
           status: "submitted",
-          source: resolution.source,
+          source: resolution.provenance.source,
+          grounding: resolution.provenance.grounding,
+          artifactsUsed: resolution.provenance.artifactsUsed,
+          contextSufficiency: resolution.provenance.contextSufficiency,
           draftPath: result.draftPath,
           answers: result.answers,
           payload: result.payload,

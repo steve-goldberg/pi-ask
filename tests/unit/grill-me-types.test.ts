@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   createDraft,
   createSubmissionPayload,
+  formatQuestionnaireProvenance,
   formatSubmissionJson,
   formatSubmissionMessage,
   validateQuestionnaireDefinition,
@@ -43,7 +44,7 @@ describe("grill-me types", () => {
     });
   });
 
-  it("formats submission json and the wrapped submit message", () => {
+  it("formats submission json, the wrapped submit message, and provenance", () => {
     const payload = {
       title: "Example",
       responses: [{ id: "one", question: "Question one?", answer: "First" }],
@@ -55,6 +56,17 @@ describe("grill-me types", () => {
 
     expect(formatSubmissionMessage(payload)).toBe(
       'Here are my answers from /grill-me:\n\n{\n  "title": "Example",\n  "responses": [\n    {\n      "id": "one",\n      "question": "Question one?",\n      "answer": "First"\n    }\n  ]\n}',
+    );
+
+    expect(
+      formatQuestionnaireProvenance({
+        source: "generated",
+        grounding: ["explicit artifacts", "session context"],
+        artifactsUsed: ["plan.json", "PRD.md"],
+        contextSufficiency: "sufficient",
+      }),
+    ).toBe(
+      "Grounding: explicit artifacts, session context • Artifacts: plan.json, PRD.md • Context: sufficient",
     );
   });
 

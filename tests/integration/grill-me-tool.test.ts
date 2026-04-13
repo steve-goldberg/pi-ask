@@ -53,20 +53,27 @@ describe("grill_me tool", () => {
     expect(pi.registerTool).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "grill_me",
-        promptSnippet: expect.stringContaining("interactive clarification questionnaire"),
+        promptSnippet: expect.stringContaining("grounded clarification questionnaire"),
         promptGuidelines: expect.arrayContaining([
           expect.stringContaining("multiple clarification answers"),
+          expect.stringContaining("Pass artifacts"),
         ]),
       }),
     );
   });
 
-  it("returns structured answers as the tool result in the same turn", async () => {
+  it("returns structured answers and provenance as the tool result in the same turn", async () => {
     resolveQuestionnaireDefinitionMock.mockResolvedValueOnce({
       source: "generated",
       definition: {
         title: "Auth Clarification",
         questions: [{ id: "login_method", question: "Which login methods must v1 support?", multiline: false }],
+      },
+      provenance: {
+        source: "generated",
+        grounding: ["explicit artifacts", "session context"],
+        artifactsUsed: ["plan.json"],
+        contextSufficiency: "sufficient",
       },
     });
     runQuestionnaireMock.mockResolvedValueOnce({
@@ -102,7 +109,7 @@ describe("grill_me tool", () => {
 
     const result = await tool.execute(
       "tool-call-id",
-      { focus: "auth edge cases" },
+      { focus: "auth edge cases", artifacts: ["plan.json"] },
       undefined,
       onUpdate,
       ctx,
@@ -110,6 +117,7 @@ describe("grill_me tool", () => {
 
     expect(resolveQuestionnaireDefinitionMock).toHaveBeenCalledWith(ctx, {
       focus: "auth edge cases",
+      artifacts: ["plan.json"],
       definition: undefined,
       fallbackDefinition: expect.objectContaining({ title: "Design Clarification" }),
     });
@@ -130,6 +138,9 @@ describe("grill_me tool", () => {
       details: {
         status: "submitted",
         source: "generated",
+        grounding: ["explicit artifacts", "session context"],
+        artifactsUsed: ["plan.json"],
+        contextSufficiency: "sufficient",
         draftPath: "/repo/.pi/tmp/grill-me.json",
         answers: {
           login_method: "Email + GitHub",
@@ -153,12 +164,18 @@ describe("grill_me tool", () => {
     expect(removeDraftFileMock).toHaveBeenCalledWith("/repo/.pi/tmp/grill-me.json");
   });
 
-  it("returns a non-error cancel result and keeps the draft on cancellation", async () => {
+  it("returns a non-error cancel result, provenance, and keeps the draft on cancellation", async () => {
     resolveQuestionnaireDefinitionMock.mockResolvedValueOnce({
-      source: "fallback",
+      source: "generated",
       definition: {
-        title: "Fallback",
+        title: "Clarification Kickoff",
         questions: [{ id: "scope", question: "What is in scope?", multiline: false }],
+      },
+      provenance: {
+        source: "generated",
+        grounding: ["thin-context generation"],
+        artifactsUsed: [],
+        contextSufficiency: "thin",
       },
     });
     runQuestionnaireMock.mockResolvedValueOnce({
@@ -191,7 +208,10 @@ describe("grill_me tool", () => {
       content: [{ type: "text", text: "User cancelled the questionnaire." }],
       details: {
         status: "cancelled",
-        source: "fallback",
+        source: "generated",
+        grounding: ["thin-context generation"],
+        artifactsUsed: [],
+        contextSufficiency: "thin",
         draftPath: "/repo/.pi/tmp/grill-me.json",
         answers: {
           scope: "",
