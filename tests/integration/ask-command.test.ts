@@ -8,15 +8,15 @@ const resolveQuestionnaireDefinitionMock = vi.fn();
 const runQuestionnaireMock = vi.fn();
 const removeDraftFileMock = vi.fn();
 
-vi.mock("../../.pi/extensions/grill-me/generator.js", () => ({
+vi.mock("../../.pi/extensions/ask/generator.js", () => ({
   resolveQuestionnaireDefinition: resolveQuestionnaireDefinitionMock,
 }));
 
-vi.mock("../../.pi/extensions/grill-me/questionnaire.js", () => ({
+vi.mock("../../.pi/extensions/ask/questionnaire.js", () => ({
   runQuestionnaire: runQuestionnaireMock,
 }));
 
-vi.mock("../../.pi/extensions/grill-me/storage.js", () => ({
+vi.mock("../../.pi/extensions/ask/storage.js", () => ({
   removeDraftFile: removeDraftFileMock,
 }));
 
@@ -32,7 +32,7 @@ function createContext(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe("/grill-me command", () => {
+describe("/ask command", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -45,11 +45,11 @@ describe("/grill-me command", () => {
       sendUserMessage: vi.fn(),
     };
 
-    const module = await import("../../.pi/extensions/grill-me/index.js");
+    const module = await import("../../.pi/extensions/ask/index.js");
     module.default(pi as never);
 
     expect(pi.registerCommand).toHaveBeenCalledWith(
-      "grill-me",
+      "ask",
       expect.objectContaining({ description: expect.stringContaining("grounded clarification questionnaire") }),
     );
   });
@@ -61,7 +61,7 @@ describe("/grill-me command", () => {
       sendUserMessage: vi.fn(),
     };
 
-    const module = await import("../../.pi/extensions/grill-me/index.js");
+    const module = await import("../../.pi/extensions/ask/index.js");
     module.default(pi as never);
 
     const [, command] = pi.registerCommand.mock.calls[0];
@@ -69,7 +69,7 @@ describe("/grill-me command", () => {
 
     await command.handler("", ctx);
 
-    expect(ctx.ui.notify).toHaveBeenCalledWith("/grill-me requires interactive TUI mode.", "error");
+    expect(ctx.ui.notify).toHaveBeenCalledWith("/ask requires interactive TUI mode.", "error");
     expect(resolveQuestionnaireDefinitionMock).not.toHaveBeenCalled();
     expect(runQuestionnaireMock).not.toHaveBeenCalled();
   });
@@ -81,7 +81,7 @@ describe("/grill-me command", () => {
       sendUserMessage: vi.fn(),
     };
 
-    const module = await import("../../.pi/extensions/grill-me/index.js");
+    const module = await import("../../.pi/extensions/ask/index.js");
     module.default(pi as never);
 
     const [, command] = pi.registerCommand.mock.calls[0];
@@ -89,7 +89,7 @@ describe("/grill-me command", () => {
 
     await command.handler("", ctx);
 
-    expect(ctx.ui.notify).toHaveBeenCalledWith("/grill-me can only run when pi is idle.", "warning");
+    expect(ctx.ui.notify).toHaveBeenCalledWith("/ask can only run when pi is idle.", "warning");
     expect(resolveQuestionnaireDefinitionMock).not.toHaveBeenCalled();
     expect(runQuestionnaireMock).not.toHaveBeenCalled();
   });
@@ -110,7 +110,7 @@ describe("/grill-me command", () => {
     });
     runQuestionnaireMock.mockResolvedValueOnce({
       status: "cancelled",
-      draftPath: "/repo/.pi/tmp/grill-me.json",
+      draftPath: "/repo/.pi/tmp/ask.json",
       answers: { one: "" },
     });
 
@@ -120,11 +120,11 @@ describe("/grill-me command", () => {
       sendUserMessage: vi.fn(),
     };
 
-    const module = await import("../../.pi/extensions/grill-me/index.js");
+    const module = await import("../../.pi/extensions/ask/index.js");
     module.default(pi as never);
 
     const [, command] = pi.registerCommand.mock.calls[0];
-    const root = mkdtempSync(join(tmpdir(), "grill-me-command-"));
+    const root = mkdtempSync(join(tmpdir(), "ask-command-"));
     writeFileSync(join(root, "progress.json"), "{}\n");
     writeFileSync(join(root, "PRD.md"), "# PRD\n");
 
@@ -144,7 +144,7 @@ describe("/grill-me command", () => {
       },
     });
     expect(ctx.ui.notify).toHaveBeenCalledWith(
-      "Opening /grill-me. Grounding: explicit artifacts, session context • Artifacts: progress.json, PRD.md • Context: sufficient",
+      "Opening /ask. Grounding: explicit artifacts, session context • Artifacts: progress.json, PRD.md • Context: sufficient",
       "info",
     );
   });

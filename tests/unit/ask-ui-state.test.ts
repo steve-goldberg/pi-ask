@@ -15,8 +15,8 @@ import {
   QuestionnaireComponent,
   withAnswer,
   type QuestionnaireUiState,
-} from "../../.pi/extensions/grill-me/ui.js";
-import type { QuestionnaireDefinition } from "../../.pi/extensions/grill-me/types.js";
+} from "../../.pi/extensions/ask/ui.js";
+import type { QuestionnaireDefinition } from "../../.pi/extensions/ask/types.js";
 
 const definition = {
   title: "Example",
@@ -47,7 +47,7 @@ function createComponent(options: {
   definition?: QuestionnaireDefinition;
   initialAnswers?: Record<string, string>;
 } = {}) {
-  const cwd = options.cwd ?? mkdtempSync(join(tmpdir(), "grill-me-ui-"));
+  const cwd = options.cwd ?? mkdtempSync(join(tmpdir(), "ask-ui-"));
   const persisted: Array<Record<string, string>> = [];
   const onDone = vi.fn();
   const component = new QuestionnaireComponent(
@@ -91,7 +91,7 @@ function normalizeRenderedText(lines: string[]): string {
     .trim();
 }
 
-describe("grill-me ui state", () => {
+describe("ask ui state", () => {
   it("advances one question at a time and ends in review mode", () => {
     let state = createQuestionnaireUiState(definition);
     state = withAnswer(definition, state, "Alpha");
@@ -199,7 +199,7 @@ describe("grill-me ui state", () => {
   });
 
   it("inserts @ file mentions through editor autocomplete rooted at the questionnaire cwd", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "grill-me-ui-"));
+    const cwd = mkdtempSync(join(tmpdir(), "ask-ui-"));
     writeFileSync(join(cwd, "progress.json"), "{}\n");
 
     const { component, persisted } = createComponent({ cwd });
@@ -215,7 +215,7 @@ describe("grill-me ui state", () => {
   });
 
   it("dismisses autocomplete on escape before cancelling the questionnaire", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "grill-me-ui-"));
+    const cwd = mkdtempSync(join(tmpdir(), "ask-ui-"));
     writeFileSync(join(cwd, "progress.json"), "{}\n");
     writeFileSync(join(cwd, "profile.json"), "{}\n");
 
@@ -245,7 +245,7 @@ describe("grill-me ui state", () => {
   });
 
   it("uses enter to accept autocomplete before saving and advancing", async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "grill-me-ui-"));
+    const cwd = mkdtempSync(join(tmpdir(), "ask-ui-"));
     writeFileSync(join(cwd, "progress.json"), "{}\n");
     writeFileSync(join(cwd, "profile.json"), "{}\n");
 

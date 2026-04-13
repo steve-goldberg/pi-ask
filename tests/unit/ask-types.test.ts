@@ -7,7 +7,7 @@ import {
   formatSubmissionJson,
   formatSubmissionMessage,
   validateQuestionnaireDefinition,
-} from "../../.pi/extensions/grill-me/types.js";
+} from "../../.pi/extensions/ask/types.js";
 
 const definition = {
   title: "Example",
@@ -17,7 +17,7 @@ const definition = {
   ],
 };
 
-describe("grill-me types", () => {
+describe("ask types", () => {
   it("creates ordered submission payloads", () => {
     expect(
       createSubmissionPayload(definition, {
@@ -55,7 +55,7 @@ describe("grill-me types", () => {
     );
 
     expect(formatSubmissionMessage(payload)).toBe(
-      'Here are my answers from /grill-me:\n\n{\n  "title": "Example",\n  "responses": [\n    {\n      "id": "one",\n      "question": "Question one?",\n      "answer": "First"\n    }\n  ]\n}',
+      'Here are my answers from /ask:\n\n{\n  "title": "Example",\n  "responses": [\n    {\n      "id": "one",\n      "question": "Question one?",\n      "answer": "First"\n    }\n  ]\n}',
     );
 
     expect(

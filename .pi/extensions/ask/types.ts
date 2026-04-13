@@ -68,7 +68,7 @@ export interface QuestionnaireSubmittedResult {
 
 export type QuestionnaireRunResult = QuestionnaireCancelledResult | QuestionnaireSubmittedResult;
 
-export interface GrillMeToolResultDetails {
+export interface AskToolResultDetails {
   status: "cancelled" | "submitted";
   source: QuestionnaireDefinitionSource;
   grounding: QuestionnaireGroundingKind[];
@@ -135,7 +135,7 @@ export function formatSubmissionJson(payload: QuestionnaireSubmissionPayload): s
 }
 
 export function formatSubmissionMessage(payload: QuestionnaireSubmissionPayload): string {
-  return `Here are my answers from /grill-me:\n\n${formatSubmissionJson(payload)}`;
+  return `Here are my answers from /ask:\n\n${formatSubmissionJson(payload)}`;
 }
 
 export function formatQuestionnaireProvenance(provenance: QuestionnaireProvenance): string {

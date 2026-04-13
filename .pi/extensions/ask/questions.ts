@@ -1,6 +1,6 @@
 import type { QuestionnaireDefinition } from "./types.js";
 
-export const DEFAULT_GRILL_ME_QUESTIONNAIRE: QuestionnaireDefinition = {
+export const DEFAULT_ASK_QUESTIONNAIRE: QuestionnaireDefinition = {
   title: "Design Clarification",
   questions: [
     {

@@ -8,7 +8,7 @@ import {
   type GroundedQuestionnaireContext,
   type ResolveGroundingOptions,
 } from "./grounding.js";
-import { DEFAULT_GRILL_ME_QUESTIONNAIRE } from "./questions.js";
+import { DEFAULT_ASK_QUESTIONNAIRE } from "./questions.js";
 import type {
   QuestionnaireDefinition,
   QuestionnaireDefinitionSource,
@@ -95,7 +95,7 @@ export async function resolveQuestionnaireDefinition(
     };
   }
 
-  const fallbackDefinition = options.fallbackDefinition ?? DEFAULT_GRILL_ME_QUESTIONNAIRE;
+  const fallbackDefinition = options.fallbackDefinition ?? DEFAULT_ASK_QUESTIONNAIRE;
   validateQuestionnaireDefinition(fallbackDefinition);
   return {
     definition: fallbackDefinition,

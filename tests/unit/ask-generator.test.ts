@@ -57,15 +57,15 @@ function createContext(root: string, overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe("grill-me generator", () => {
+describe("ask generator", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
   });
 
   it("uses a provided definition without calling the model", async () => {
-    const root = mkdtempSync(join(tmpdir(), "grill-me-generator-"));
-    const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/grill-me/generator.js");
+    const root = mkdtempSync(join(tmpdir(), "ask-generator-"));
+    const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/ask/generator.js");
 
     const providedDefinition = {
       title: "Provided",
@@ -90,13 +90,13 @@ describe("grill-me generator", () => {
   });
 
   it("keeps the raw request intact while separately grounding on explicit artifacts", async () => {
-    const root = mkdtempSync(join(tmpdir(), "grill-me-generator-"));
+    const root = mkdtempSync(join(tmpdir(), "ask-generator-"));
     writeFileSync(
       join(root, "progress.json"),
       JSON.stringify(
         {
           sections: {
-            grillMe: {
+            ask: {
               goal: "Ground question generation on explicit artifacts before asking file-specific questions.",
               findings: [
                 "Current generation only uses session context and optional focus.",
@@ -137,7 +137,7 @@ describe("grill-me generator", () => {
       ],
     });
 
-    const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/grill-me/generator.js");
+    const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/ask/generator.js");
     const ctx = createContext(root);
 
     const result = await resolveQuestionnaireDefinition(ctx as never, {
@@ -187,8 +187,8 @@ describe("grill-me generator", () => {
   });
 
   it("uses the raw request unchanged in thin-context exploratory questions instead of mangling file mentions", async () => {
-    const root = mkdtempSync(join(tmpdir(), "grill-me-generator-"));
-    const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/grill-me/generator.js");
+    const root = mkdtempSync(join(tmpdir(), "ask-generator-"));
+    const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/ask/generator.js");
 
     const result = await resolveQuestionnaireDefinition(
       createContext(root, {
@@ -223,7 +223,7 @@ describe("grill-me generator", () => {
             question: "Which artifact or file should I base this on first?",
             multiline: false,
             recommendation:
-              "Mention a concrete file path like @grillme-progress.json or @grill-me-plan.md if an artifact should anchor this round.",
+              "Mention a concrete file path like @ask-progress.json or @ask-plan.md if an artifact should anchor this round.",
           },
           {
             id: "ambiguity",
@@ -243,11 +243,11 @@ describe("grill-me generator", () => {
   });
 
   it("falls back only after grounded generation is unavailable", async () => {
-    const root = mkdtempSync(join(tmpdir(), "grill-me-generator-"));
+    const root = mkdtempSync(join(tmpdir(), "ask-generator-"));
     writeFileSync(join(root, "PRD.md"), "# PRD\n\nExplicitly ground the next clarification round on this file.\n");
 
-    const { DEFAULT_GRILL_ME_QUESTIONNAIRE } = await import("../../.pi/extensions/grill-me/questions.js");
-    const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/grill-me/generator.js");
+    const { DEFAULT_ASK_QUESTIONNAIRE } = await import("../../.pi/extensions/ask/questions.js");
+    const { resolveQuestionnaireDefinition } = await import("../../.pi/extensions/ask/generator.js");
 
     const result = await resolveQuestionnaireDefinition(
       createContext(root, { model: undefined }) as never,
@@ -258,7 +258,7 @@ describe("grill-me generator", () => {
     );
 
     expect(result).toEqual({
-      definition: DEFAULT_GRILL_ME_QUESTIONNAIRE,
+      definition: DEFAULT_ASK_QUESTIONNAIRE,
       source: "fallback",
       provenance: {
         source: "fallback",

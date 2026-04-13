@@ -6,8 +6,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
 
-import { readDraftFile } from "../../.pi/extensions/grill-me/storage.js";
-import { runQuestionnaire } from "../../.pi/extensions/grill-me/questionnaire.js";
+import { readDraftFile } from "../../.pi/extensions/ask/storage.js";
+import { runQuestionnaire } from "../../.pi/extensions/ask/questionnaire.js";
 
 const definition = {
   title: "Example",
@@ -19,8 +19,8 @@ const definition = {
 
 describe("runQuestionnaire", () => {
   it("keeps the temp draft on cancel with the latest in-progress answers", async () => {
-    const root = mkdtempSync(join(tmpdir(), "grill-me-runner-"));
-    const draftPath = join(root, "grill-me.json");
+    const root = mkdtempSync(join(tmpdir(), "ask-runner-"));
+    const draftPath = join(root, "ask.json");
 
     const ctx = {
       cwd: root,
@@ -59,8 +59,8 @@ describe("runQuestionnaire", () => {
   });
 
   it("keeps the completed draft until the caller decides cleanup on submit", async () => {
-    const root = mkdtempSync(join(tmpdir(), "grill-me-runner-"));
-    const draftPath = join(root, "grill-me.json");
+    const root = mkdtempSync(join(tmpdir(), "ask-runner-"));
+    const draftPath = join(root, "ask.json");
 
     const ctx = {
       cwd: root,

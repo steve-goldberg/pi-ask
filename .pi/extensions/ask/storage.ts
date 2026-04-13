@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import type { QuestionnaireAnswers, QuestionnaireDefinition, QuestionnaireDraft } from "./types.js";
 import { createDraft } from "./types.js";
 
-export const DEFAULT_GRILL_ME_DRAFT_PATH = ".pi/tmp/grill-me.json";
+export const DEFAULT_ASK_DRAFT_PATH = ".pi/tmp/ask.json";
 export const DEFAULT_DRAFT_PERSIST_DEBOUNCE_MS = 75;
 
 export interface DraftPersistenceManager {
@@ -13,7 +13,7 @@ export interface DraftPersistenceManager {
   dispose(): void;
 }
 
-export function resolveDraftPath(cwd: string, relativePath = DEFAULT_GRILL_ME_DRAFT_PATH): string {
+export function resolveDraftPath(cwd: string, relativePath = DEFAULT_ASK_DRAFT_PATH): string {
   return resolve(cwd, relativePath);
 }
 

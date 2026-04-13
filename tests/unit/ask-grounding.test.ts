@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractExplicitArtifactsFromCommandArgs,
   resolveGroundedQuestionnaireContext,
-} from "../../.pi/extensions/grill-me/grounding.js";
+} from "../../.pi/extensions/ask/grounding.js";
 
 function createSessionManager(messages: Array<{ role: string; text: string }>) {
   return {
@@ -22,9 +22,9 @@ function createSessionManager(messages: Array<{ role: string; text: string }>) {
   };
 }
 
-describe("grill-me grounding", () => {
+describe("ask grounding", () => {
   it("extracts explicit artifact hints from slash-command args", () => {
-    const root = mkdtempSync(join(tmpdir(), "grill-me-grounding-"));
+    const root = mkdtempSync(join(tmpdir(), "ask-grounding-"));
     writeFileSync(join(root, "progress.json"), "{}\n");
     writeFileSync(join(root, "PRD.md"), "# PRD\n");
     writeFileSync(join(root, "README.md"), "# README\n");
@@ -38,7 +38,7 @@ describe("grill-me grounding", () => {
   });
 
   it("preserves the raw request while reading explicit artifacts and combining them with session context", () => {
-    const root = mkdtempSync(join(tmpdir(), "grill-me-grounding-"));
+    const root = mkdtempSync(join(tmpdir(), "ask-grounding-"));
     writeFileSync(join(root, "progress.json"), '{"goal":"Read explicit artifacts before asking file-specific questions."}\n');
 
     const result = resolveGroundedQuestionnaireContext(
@@ -78,7 +78,7 @@ describe("grill-me grounding", () => {
   });
 
   it("marks fresh, weak sessions as thin when no explicit artifacts were read", () => {
-    const root = mkdtempSync(join(tmpdir(), "grill-me-grounding-"));
+    const root = mkdtempSync(join(tmpdir(), "ask-grounding-"));
 
     const result = resolveGroundedQuestionnaireContext(
       {

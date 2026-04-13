@@ -4,15 +4,15 @@ const resolveQuestionnaireDefinitionMock = vi.fn();
 const runQuestionnaireMock = vi.fn();
 const removeDraftFileMock = vi.fn();
 
-vi.mock("../../.pi/extensions/grill-me/generator.js", () => ({
+vi.mock("../../.pi/extensions/ask/generator.js", () => ({
   resolveQuestionnaireDefinition: resolveQuestionnaireDefinitionMock,
 }));
 
-vi.mock("../../.pi/extensions/grill-me/questionnaire.js", () => ({
+vi.mock("../../.pi/extensions/ask/questionnaire.js", () => ({
   runQuestionnaire: runQuestionnaireMock,
 }));
 
-vi.mock("../../.pi/extensions/grill-me/storage.js", () => ({
+vi.mock("../../.pi/extensions/ask/storage.js", () => ({
   removeDraftFile: removeDraftFileMock,
 }));
 
@@ -34,7 +34,7 @@ function createToolContext(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe("grill_me tool", () => {
+describe("ask tool", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -47,12 +47,12 @@ describe("grill_me tool", () => {
       sendUserMessage: vi.fn(),
     };
 
-    const module = await import("../../.pi/extensions/grill-me/index.js");
+    const module = await import("../../.pi/extensions/ask/index.js");
     module.default(pi as never);
 
     expect(pi.registerTool).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: "grill_me",
+        name: "ask",
         promptSnippet: expect.stringContaining("grounded clarification questionnaire"),
         promptGuidelines: expect.arrayContaining([
           expect.stringContaining("multiple clarification answers"),
@@ -78,7 +78,7 @@ describe("grill_me tool", () => {
     });
     runQuestionnaireMock.mockResolvedValueOnce({
       status: "submitted",
-      draftPath: "/repo/.pi/tmp/grill-me.json",
+      draftPath: "/repo/.pi/tmp/ask.json",
       answers: {
         login_method: "Email + GitHub",
       },
@@ -100,7 +100,7 @@ describe("grill_me tool", () => {
       sendUserMessage: vi.fn(),
     };
 
-    const module = await import("../../.pi/extensions/grill-me/index.js");
+    const module = await import("../../.pi/extensions/ask/index.js");
     module.default(pi as never);
 
     const [tool] = pi.registerTool.mock.calls[0];
@@ -141,7 +141,7 @@ describe("grill_me tool", () => {
         grounding: ["explicit artifacts", "session context"],
         artifactsUsed: ["progress.json"],
         contextSufficiency: "sufficient",
-        draftPath: "/repo/.pi/tmp/grill-me.json",
+        draftPath: "/repo/.pi/tmp/ask.json",
         answers: {
           login_method: "Email + GitHub",
         },
@@ -161,7 +161,7 @@ describe("grill_me tool", () => {
       content: [{ type: "text", text: "Opening clarification questionnaire..." }],
       details: {},
     });
-    expect(removeDraftFileMock).toHaveBeenCalledWith("/repo/.pi/tmp/grill-me.json");
+    expect(removeDraftFileMock).toHaveBeenCalledWith("/repo/.pi/tmp/ask.json");
   });
 
   it("returns a non-error cancel result, provenance, and keeps the draft on cancellation", async () => {
@@ -180,7 +180,7 @@ describe("grill_me tool", () => {
     });
     runQuestionnaireMock.mockResolvedValueOnce({
       status: "cancelled",
-      draftPath: "/repo/.pi/tmp/grill-me.json",
+      draftPath: "/repo/.pi/tmp/ask.json",
       answers: {
         scope: "",
       },
@@ -192,7 +192,7 @@ describe("grill_me tool", () => {
       sendUserMessage: vi.fn(),
     };
 
-    const module = await import("../../.pi/extensions/grill-me/index.js");
+    const module = await import("../../.pi/extensions/ask/index.js");
     module.default(pi as never);
 
     const [tool] = pi.registerTool.mock.calls[0];
@@ -212,7 +212,7 @@ describe("grill_me tool", () => {
         grounding: ["thin-context generation"],
         artifactsUsed: [],
         contextSufficiency: "thin",
-        draftPath: "/repo/.pi/tmp/grill-me.json",
+        draftPath: "/repo/.pi/tmp/ask.json",
         answers: {
           scope: "",
         },

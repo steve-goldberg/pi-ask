@@ -1,8 +1,8 @@
-# grill-me plan
+# ask plan
 
 ## Extracted product requirements from `PRD.md`
 
-The following sections preserve the original `grill-me`-specific product wording extracted from `PRD.md`.
+The following sections preserve the original `ask`-specific product wording extracted from `PRD.md`.
 
 ### From product vision
 
@@ -12,7 +12,7 @@ A key product goal is not just execution, but **shared understanding**: the tool
 
 ### From product scope / planning support
 
-A separate but related grounded clarification system (`/grill-me` command and `grill_me` tool) will help refine plans, specs, and feature intent through structured Q/A.
+A separate but related grounded clarification system (`/ask` command and `ask` tool) will help refine plans, specs, and feature intent through structured Q/A.
 
 Its purpose is to:
 - ask targeted clarification questions one at a time
@@ -20,13 +20,13 @@ Its purpose is to:
 - avoid pretending to know unseen context when grounding is thin
 - return structured answers that can be reused for planning, spec refinement, and later feature implementation
 
-### From `/grill-me` grounded clarification companion
+### From `/ask` grounded clarification companion
 
 This repository also includes a related planning goal:
 
 Build a reusable pi-native grounded clarification system exposed both as:
-- `/grill-me` for human-invoked interactive clarification
-- `grill_me` for agent-invoked clarification inside a workflow
+- `/ask` for human-invoked interactive clarification
+- `ask` for agent-invoked clarification inside a workflow
 
 #### Core purpose
 The end goal is a tool that knows the **right questions to ask at the right time** to gather the **right context**, so the human and the agent can reach a **shared understanding** of:
@@ -36,7 +36,7 @@ The end goal is a tool that knows the **right questions to ask at the right time
 - the open ambiguities that still need resolution
 
 #### Product behavior
-`/grill-me` should not just be a static questionnaire.
+`/ask` should not just be a static questionnaire.
 
 It should:
 - ask one question at a time in a compact native-feeling pi UI
@@ -48,7 +48,7 @@ It should:
 - surface provenance so the operator can understand what the clarification round was based on
 
 #### Workflow role
-`/grill-me` is a supporting planning primitive, not the same thing as the Ralph execution loop.
+`/ask` is a supporting planning primitive, not the same thing as the Ralph execution loop.
 
 Its job is to improve planning quality and reduce drift before or during execution by making clarification intentional, structured, and grounded.
 
@@ -76,7 +76,7 @@ For v1 and near-term planning:
 
 ## Core idea
 
-`grill-me` should evolve into a **general-purpose context collection system** for agentic work.
+`ask` should evolve into a **general-purpose context collection system** for agentic work.
 
 Its job is not just to ask ad hoc clarification questions. Its job is to **collect the right context in a structured way** so the human and the agent can reach shared understanding before planning, spec writing, or implementation begins.
 
@@ -87,13 +87,13 @@ A core problem this solves:
 - sometimes I do not yet know what I want
 - agentic coding quality depends heavily on having clear specs, constraints, and decisions up front
 
-So the purpose of `grill-me` is to **close context gaps early and intentionally**.
+So the purpose of `ask` is to **close context gaps early and intentionally**.
 
 ---
 
 ## Product direction
 
-`grill-me` should become a **template-driven interview engine**.
+`ask` should become a **template-driven interview engine**.
 
 Instead of only generating questions dynamically, it should also support **prepared recipes of questions** for common workflows.
 
@@ -124,22 +124,22 @@ These templates would make the questioning process:
 
 ## Positioning
 
-`grill-me` should be treated as an independent extension/product.
+`ask` should be treated as an independent extension/product.
 
 It is **not the same thing as Ralph**.
 
-- `grill-me` = collects context
+- `ask` = collects context
 - planner/spec workflows = transform context into docs/manifests
 - `ralph` = consumes structured planning artifacts and executes a feature loop
 
-`ralph` is only **one consumer** of `grill-me`.
+`ralph` is only **one consumer** of `ask`.
 
-A `features.json` planning template is just one example template that `grill-me` could walk the user through.
+A `features.json` planning template is just one example template that `ask` could walk the user through.
 
 That means:
 
-- I may want `grill-me` without `ralph`
-- I may want `grill-me` for planning docs, prompts, or workflows unrelated to `ralph`
+- I may want `ask` without `ralph`
+- I may want `ask` for planning docs, prompts, or workflows unrelated to `ralph`
 - the shared contract between them can simply be the `features.json` format
 
 ---
@@ -155,13 +155,13 @@ The end goal is a tool that knows the **right questions to ask at the right time
 - the tradeoffs
 - the unresolved ambiguities
 
-`grill-me` should help transform vague intent into structured, actionable input.
+`ask` should help transform vague intent into structured, actionable input.
 
 ---
 
 ## Template-driven model
 
-`grill-me` should support **question templates**, likely in **YAML**.
+`ask` should support **question templates**, likely in **YAML**.
 
 Why YAML:
 
@@ -314,7 +314,7 @@ That output could then be handed to `ralph`.
 
 All agentic coding quality depends on good instructions and good context.
 
-The more consistently `grill-me` can collect:
+The more consistently `ask` can collect:
 
 - goals
 - constraints
@@ -333,7 +333,7 @@ That includes:
 - testing
 - orchestration
 
-So `grill-me` should be viewed as a **context acquisition layer** for agentic systems.
+So `ask` should be viewed as a **context acquisition layer** for agentic systems.
 
 ---
 
@@ -341,7 +341,7 @@ So `grill-me` should be viewed as a **context acquisition layer** for agentic sy
 
 The current grounded question generation work still matters.
 
-Template-based questioning should not replace grounding. Instead, `grill-me` should eventually support both:
+Template-based questioning should not replace grounding. Instead, `ask` should eventually support both:
 
 1. **grounded dynamic questioning** when context exists and the agent needs targeted clarification
 2. **template-driven questioning** when the user wants a structured planning workflow
@@ -357,7 +357,7 @@ Both modes serve the same higher-level goal: **collect context intentionally and
 
 ## Near-term design principle
 
-Do not over-couple `grill-me` to a single workflow.
+Do not over-couple `ask` to a single workflow.
 
 Instead:
 
@@ -365,13 +365,13 @@ Instead:
 - let templates define domain-specific flows
 - let downstream consumers decide what to do with the answers
 
-This keeps `grill-me` reusable across many planning and execution systems.
+This keeps `ask` reusable across many planning and execution systems.
 
 ---
 
 ## Summary
 
-`grill-me` is evolving from a clarification command into a **template-capable context collection engine**.
+`ask` is evolving from a clarification command into a **template-capable context collection engine**.
 
 Its purpose is to:
 

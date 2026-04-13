@@ -11,7 +11,7 @@ import {
   removeDraftFile,
   resolveDraftPath,
   updateDraftFile,
-} from "../../.pi/extensions/grill-me/storage.js";
+} from "../../.pi/extensions/ask/storage.js";
 
 const definition = {
   title: "Example",
@@ -30,13 +30,13 @@ afterEach(() => {
   }
 });
 
-describe("grill-me storage", () => {
+describe("ask storage", () => {
   it("resolves the default draft path inside the project", () => {
-    expect(resolveDraftPath("/repo")).toBe("/repo/.pi/tmp/grill-me.json");
+    expect(resolveDraftPath("/repo")).toBe("/repo/.pi/tmp/ask.json");
   });
 
   it("overwrites and updates the temp draft file", () => {
-    const root = mkdtempSync(join(tmpdir(), "grill-me-storage-"));
+    const root = mkdtempSync(join(tmpdir(), "ask-storage-"));
     const filePath = join(root, "draft.json");
     createdPaths.push(filePath);
 
@@ -62,7 +62,7 @@ describe("grill-me storage", () => {
   it("debounces draft persistence during typing and flushes on demand", () => {
     vi.useFakeTimers();
 
-    const root = mkdtempSync(join(tmpdir(), "grill-me-storage-"));
+    const root = mkdtempSync(join(tmpdir(), "ask-storage-"));
     const filePath = join(root, "draft.json");
     createdPaths.push(filePath);
 
@@ -106,7 +106,7 @@ describe("grill-me storage", () => {
   });
 
   it("removes the temp draft file when asked", () => {
-    const root = mkdtempSync(join(tmpdir(), "grill-me-storage-"));
+    const root = mkdtempSync(join(tmpdir(), "ask-storage-"));
     const filePath = join(root, "draft.json");
 
     overwriteDraftFile(filePath, definition, { one: "Alpha" });

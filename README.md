@@ -1,21 +1,21 @@
 # ask
 
-A small TypeScript workspace centered on the **`grill-me`** grounded clarification extension for pi.
+A small TypeScript workspace centered on the **`ask`** grounded clarification extension for pi.
 
 ## Current status
 
-This repo now tracks the **grill-me / ask** product only.
+This repo now tracks the **ask** product only.
 
 The implemented extension lives under:
 
-- `.pi/extensions/grill-me/index.ts`
-- `.pi/extensions/grill-me/types.ts`
-- `.pi/extensions/grill-me/storage.ts`
-- `.pi/extensions/grill-me/questions.ts`
-- `.pi/extensions/grill-me/questionnaire.ts`
-- `.pi/extensions/grill-me/ui.ts`
-- `.pi/extensions/grill-me/generator.ts`
-- `.pi/extensions/grill-me/grounding.ts`
+- `.pi/extensions/ask/index.ts`
+- `.pi/extensions/ask/types.ts`
+- `.pi/extensions/ask/storage.ts`
+- `.pi/extensions/ask/questions.ts`
+- `.pi/extensions/ask/questionnaire.ts`
+- `.pi/extensions/ask/ui.ts`
+- `.pi/extensions/ask/generator.ts`
+- `.pi/extensions/ask/grounding.ts`
 
 The Ralph execution-loop planning files have been split out to the sibling `ralphi/` folder.
 
@@ -25,12 +25,12 @@ Quality gates currently pass:
 - `npm run typecheck`
 - `npm test`
 
-## What grill-me does
+## What ask does
 
-`grill-me` provides:
+`ask` provides:
 
-- a manual `/grill-me` command
-- an agent-callable `grill_me` tool
+- a manual `/ask` command
+- an agent-callable `ask` tool
 - explicit artifact grounding from mentioned or supplied files
 - thin-context honesty when grounding is weak
 - provenance for how questions were generated
@@ -40,10 +40,10 @@ Quality gates currently pass:
 
 ## Project docs
 
-- `PRD.md` — repo entrypoint for the ask / grill-me product
-- `grill-me-plan.md` — product direction and longer-term context collection vision
+- `PRD.md` — repo entrypoint for the ask product
+- `ask-plan.md` — product direction and longer-term context collection vision
 - `progress.json` — current progress entrypoint for this repo
-- `grillme-progress.json` — same focused tracker retained under its original filename
+- `ask-progress.json` — focused progress tracker for the ask product
 
 Temporary split note:
 
