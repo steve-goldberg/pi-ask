@@ -211,12 +211,13 @@
           "leftRight": "normal text editing"
         },
         "inputUX": {
-          "editingSurface": "replace the current horizontal-scrolling input with a wrapped editor-like input",
-          "longAnswers": "long answers must remain visible and editable without text disappearing off-screen",
-          "artifactMentions": "support @mention affordances for artifact hints where applicable in pi TUI surfaces",
+          "editingSurface": "replace the current Input-based answer field with Editor from @mariozechner/pi-tui",
+          "longAnswers": "use the Editor's wrapped multi-line rendering so long answers remain visible and editable without text disappearing off-screen",
+          "artifactMentions": "wire Editor#setAutocompleteProvider(...) with a file-aware CombinedAutocompleteProvider or AutocompleteProvider rooted at ctx.cwd so @ file mentions autocomplete inside the custom TUI",
           "notes": [
-            "answers may still serialize as strings in v1 even when the editor surface is visually wrapped",
-            "input UX should feel native inside pi rather than like a single-line terminal prompt"
+            "keep QuestionnaireAnswers, QuestionnaireDraft, and QuestionnaireSubmissionPayload unchanged and continue persisting plain string answers",
+            "questionnaire orchestration and storage behavior should remain functionally the same apart from using the Editor-backed answer field",
+            "the custom questionnaire UI does not need to replicate full main-chat attachment chip behavior as long as @ file mention insertion works inside the Editor"
           ]
         },
         "reviewBehavior": {
@@ -625,17 +626,22 @@
         },
         {
           "id": "G017",
-          "title": "Upgrade the answer input to a wrapped editor-like surface",
+          "title": "Replace the answer Input with Editor and file-aware autocomplete",
           "status": "planned",
           "dependsOn": [
             "G004"
           ],
-          "goal": "Replace the current horizontal-scrolling answer input with a wrapped editor-like experience so longer answers remain visible and editable, and support artifact mention affordances where the pi TUI surface allows.",
+          "goal": "In .pi/extensions/grill-me/ui.ts, replace the current Input-based answer field with Editor from @mariozechner/pi-tui while keeping QuestionnaireAnswers, QuestionnaireDraft, and QuestionnaireSubmissionPayload unchanged. In QuestionnaireComponent, wire Editor#setAutocompleteProvider(...) using a file-aware CombinedAutocompleteProvider or AutocompleteProvider rooted at ctx.cwd so @ file mentions work inside the custom TUI. Preserve Enter = save/next, Shift+Tab = previous, Escape = cancel, keep the review flow unchanged, leave storage plus questionnaire orchestration functionally the same apart from continuing to persist plain string answers, and update tests covering wrapped editing plus @-mention insertion behavior.",
           "files": [
             ".pi/extensions/grill-me/ui.ts",
             ".pi/extensions/grill-me/questionnaire.ts",
             "tests/unit/grill-me-ui-state.test.ts",
             "tests/unit/grill-me-questionnaire.test.ts"
+          ],
+          "acceptanceNotes": [
+            "long answers stay wrapped and editable inside the questionnaire instead of scrolling horizontally off-screen",
+            "typing @ inside the Editor can insert file mentions via autocomplete rooted at the current working directory",
+            "answer drafts and submissions still serialize to the existing plain-string schema without changing storage formats"
           ]
         }
       ],
