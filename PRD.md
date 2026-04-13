@@ -1,27 +1,30 @@
 # PRD.md
 
-This repository now has **two related but independent product tracks**:
-
-1. **`grill-me-plan.md`** — the grounded clarification and context collection product
-2. **`pi-ralph.md`** — the Ralph-style execution loop and feature delivery product
-
-`progress.json` is now the umbrella progress entrypoint, while `grillme-progress.json` and `ralph-progress.json` hold the focused implementation roadmaps for the two product tracks.
+This repository now tracks a single product: **the `grill-me` grounded clarification extension**.
 
 ## How to use these docs
 
-- Read **`grill-me-plan.md`** for the context collection, questioning, template, and workflow direction.
-- Read **`pi-ralph.md`** for the feature-loop, coder/tester/controller, manifest, and execution direction.
-- Read **`progress.json`** for the umbrella progress entrypoint.
-- Read **`grillme-progress.json`** for the grounded clarification implementation sequence and status.
-- Read **`ralph-progress.json`** for the Ralph loop implementation sequence and status.
+- Read **`grill-me-plan.md`** for the product direction and context collection model.
+- Read **`progress.json`** for the current implementation roadmap and status.
+- Read **`grillme-progress.json`** if you want the same tracker under its original focused filename.
 
-## Why this split exists
+## Repo boundary
 
-The repository direction became two distinct products:
+- This repo owns **`grill-me` / `ask`**.
+- The Ralph execution-loop docs and roadmap were split to the sibling **`ralphi/`** folder.
+- **`.pi/ralph/features.json`** is intentionally still present here for now and will be split independently later.
 
-- **`grill-me`** is a reusable context collection engine
-- **`ralph`** is a feature-by-feature execution harness
+## Current state
 
-They may share contracts such as `features.json`, but they should not be treated as the same extension or the same product.
+Implementation progress in this repo is still centered on `grill-me`:
 
-This file is now the umbrella entrypoint that links to the split product docs.
+- reusable questionnaire engine
+- `/grill-me` command
+- `grill_me` tool
+- artifact-aware grounding
+- thin-context questioning
+- provenance
+- Editor-based answering with `@file` autocomplete
+- tested draft persistence and submit behavior
+
+The main remaining planned item is still quick/deep question budgets.
