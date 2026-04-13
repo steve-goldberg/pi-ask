@@ -16,6 +16,7 @@ import {
   withAnswer,
   type QuestionnaireUiState,
 } from "../../.pi/extensions/grill-me/ui.js";
+import type { QuestionnaireDefinition } from "../../.pi/extensions/grill-me/types.js";
 
 const definition = {
   title: "Example",
@@ -43,7 +44,7 @@ function createTheme() {
 
 function createComponent(options: {
   cwd?: string;
-  definition?: typeof singleQuestionDefinition;
+  definition?: QuestionnaireDefinition;
   initialAnswers?: Record<string, string>;
 } = {}) {
   const cwd = options.cwd ?? mkdtempSync(join(tmpdir(), "grill-me-ui-"));
@@ -73,11 +74,13 @@ function typeText(component: QuestionnaireComponent, text: string) {
   }
 }
 
-function getInternalEditor(component: QuestionnaireComponent): { isShowingAutocomplete(): boolean } {
-  return (component as unknown as { editor: { isShowingAutocomplete(): boolean } }).editor;
+function renderText(component: QuestionnaireComponent, width: number = 80): string {
+  return normalizeRenderedText(component.render(width));
 }
 
 const ESC = String.fromCharCode(27);
+const ENTER = "\r";
+const SHIFT_ENTER = "\x1b\r";
 const ANSI_ESCAPE_PATTERN = new RegExp(`${ESC}\\[[0-9;?]*[ -/]*[@-~]`, "g");
 
 function normalizeRenderedText(lines: string[]): string {
@@ -217,19 +220,20 @@ describe("grill-me ui state", () => {
     writeFileSync(join(cwd, "profile.json"), "{}\n");
 
     const { component, persisted, onDone } = createComponent({ cwd });
-    const editor = getInternalEditor(component);
 
     typeText(component, "Use @pro");
     component.handleInput("\t");
 
     await vi.waitFor(() => {
-      expect(editor.isShowingAutocomplete()).toBe(true);
+      const rendered = renderText(component);
+      expect(rendered).toContain("progress.json");
+      expect(rendered).toContain("profile.json");
     });
 
     component.handleInput(ESC);
 
     expect(onDone).not.toHaveBeenCalled();
-    expect(editor.isShowingAutocomplete()).toBe(false);
+    expect(renderText(component)).not.toContain("profile.json");
     expect(persisted.at(-1)?.one).toBe("Use @pro");
 
     component.handleInput(ESC);
@@ -238,5 +242,52 @@ describe("grill-me ui state", () => {
       status: "cancelled",
       answers: { one: "Use @pro" },
     });
+  });
+
+  it("uses enter to accept autocomplete before saving and advancing", async () => {
+    const cwd = mkdtempSync(join(tmpdir(), "grill-me-ui-"));
+    writeFileSync(join(cwd, "progress.json"), "{}\n");
+    writeFileSync(join(cwd, "profile.json"), "{}\n");
+
+    const { component, persisted, onDone } = createComponent({ cwd, definition });
+
+    typeText(component, "Use @pro");
+    component.handleInput("\t");
+
+    await vi.waitFor(() => {
+      const rendered = renderText(component);
+      expect(rendered).toContain("progress.json");
+      expect(rendered).toContain("profile.json");
+    });
+
+    component.handleInput(ENTER);
+
+    await vi.waitFor(() => {
+      expect(persisted.at(-1)?.one).toMatch(/^Use @(progress|profile)\.json $/);
+    });
+
+    expect(onDone).not.toHaveBeenCalled();
+    expect(renderText(component)).toContain("Question 1 of 3");
+    expect(renderText(component)).not.toContain("Question 2 of 3");
+
+    component.handleInput(ENTER);
+
+    expect(onDone).not.toHaveBeenCalled();
+    expect(renderText(component)).toContain("Question 2 of 3");
+  });
+
+  it("inserts a newline on shift-enter without advancing", () => {
+    const { component, persisted, onDone } = createComponent({ definition });
+
+    typeText(component, "First line");
+    component.handleInput(SHIFT_ENTER);
+    typeText(component, "Second line");
+
+    expect(persisted.at(-1)?.one).toBe("First line\nSecond line");
+    expect(onDone).not.toHaveBeenCalled();
+    expect(renderText(component)).toContain("Question 1 of 3");
+    expect(renderText(component)).not.toContain("Question 2 of 3");
+    expect(renderText(component)).toContain("First line");
+    expect(renderText(component)).toContain("Second line");
   });
 });
