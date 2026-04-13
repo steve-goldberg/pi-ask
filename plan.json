@@ -54,90 +54,125 @@
       "title": "Interactive /grill-me questionnaire extension",
       "status": "in_progress",
       "priority": "high",
-      "goal": "Create a reusable pi-native interview/questionnaire extension that lets pi ask the user concise, structured clarification questions one at a time instead of dumping a long wall of text into chat, persists draft answers to a temp JSON file, supports quick review/editing in the TUI, and routes submitted answers back to either the active session or the calling tool flow depending on how it was invoked.",
+      "goal": "Create a reusable pi-native grounded clarification extension that lets pi ask the user concise, structured questions one at a time instead of dumping a long wall of text into chat, can ground on explicitly mentioned files plus session context, persists draft answers safely to a temp JSON file, supports quick review/editing in the TUI, surfaces provenance, and routes submitted answers back to either the active session or the calling tool flow depending on how it was invoked.",
       "scope": {
-        "part1a": "Done: build the standalone reusable questionnaire engine and expose it through /grill-me with a built-in default question set, review/edit flow, draft persistence, and manual submit-as-user-message behavior.",
-        "part1b": "Next: expand /grill-me into a dynamic context-aware clarification system that generates targeted questions from the current session, accepts optional manual focus args, and exposes an agent-callable grill_me tool so pi can ask for clarification interactively mid-workflow.",
-        "part2": "Wire the same questionnaire engine into the future clarification workflow so feature planning can generate questions, collect answers, and write clarifications back into PRD.md and per-feature markdown files."
+        "part1a": "Done: build the standalone reusable questionnaire engine and expose it through /grill-me with a built-in fallback question set, review/edit flow, draft persistence, debounced updates while typing, failure-safe cleanup semantics, and manual submit-as-user-message behavior.",
+        "part1b": "Next: shift /grill-me from session/focus-only generation into a grounded clarification system that reads explicitly mentioned artifacts first, combines them with session context, detects thin context honestly, supports quick/deep question budgets, exposes an agent-callable grill_me tool with explicit artifacts and mode parameters, surfaces provenance, and upgrades the input UX for long answers and artifact hints.",
+        "part2": "Wire the same grounded questionnaire engine into future clarification workflows so planning flows can generate or inject questions, collect answers, and write clarifications back into PRD.md and per-feature markdown files."
       },
       "implementationReview": {
-        "summary": "The initial implementation aligns well with the earlier narrow Part 1 plan, but only partially aligns with the current product vision.",
+        "summary": "The current implementation is a solid reusable questionnaire engine and already includes dynamic generation, the agent-callable tool, safer cleanup semantics, and debounced draft persistence, but it still falls short of the clarified grounded-questioning product direction.",
         "alignment": {
           "oldPlanPart1": "strong",
           "currentVision": "partial"
         },
         "strengths": [
           "project-local pi extension structure is good",
-          "questionnaire engine is already reasonably reusable internally",
+          "questionnaire engine is reusable internally",
+          "dynamic generation from session context plus focus already exists",
+          "agent-callable grill_me tool already exists",
+          "failure-safe submit cleanup and debounced draft persistence are already implemented",
           "TUI flow is clean and tested",
-          "draft persistence works",
           "lint, typecheck, and tests pass"
         ],
         "findings": [
           {
             "severity": "high",
-            "area": "entrypoints",
-            "summary": "Current implementation only exposes /grill-me as a slash command, so the model cannot invoke the clarification flow itself."
+            "area": "grounding",
+            "summary": "Question generation still relies on focus plus session context and does not read explicitly mentioned project artifacts before asking deeper questions."
           },
           {
             "severity": "high",
-            "area": "questionSource",
-            "summary": "Question source is hard-coded to the bundled default questionnaire and does not derive questions from session context or optional args."
+            "area": "thinContextHonesty",
+            "summary": "In fresh or thin-context sessions the generator can ask file-specific or plan-specific questions without enough grounding, instead of first admitting the lack of context and asking for or gathering grounding."
           },
           {
             "severity": "medium",
-            "area": "submitSafety",
-            "summary": "Draft deletion happens before message handoff succeeds, creating an avoidable data-loss path on submit."
+            "area": "provenance",
+            "summary": "The extension does not clearly surface what a questionnaire was based on, such as provided definition, mentioned files, session context, thin-context generation, or fallback."
           },
           {
             "severity": "medium",
-            "area": "persistencePerformance",
-            "summary": "Draft persistence currently uses synchronous writes on every keystroke, which risks unnecessary TUI lag."
+            "area": "inputUX",
+            "summary": "The current answer input behaves like a horizontal-scrolling field instead of a wrapped editor-like surface, which makes longer answers difficult to edit and does not support artifact mention affordances."
           }
         ],
         "keyConsiderations": [
-          "tool, not just command",
-          "question source abstraction with built-in preset as fallback only",
-          "context-to-questions flow should use session, feature, PRD, and optional focus text",
-          "safe submit semantics must delete drafts only after successful handoff",
-          "the reusable questionnaire engine is the primary asset and should not be overfit to /grill-me"
+          "definition stays first-class and bypasses grounding plus generation entirely",
+          "there is no default artifact set; only explicitly mentioned files, session context, or exploratory grounding should be used",
+          "grill_me should remain a single grounded questionnaire round, with follow-up rounds owned by the agent or workflow rather than hidden inside the extension",
+          "grounding should prefer mentioned artifacts plus session context before deeper question generation",
+          "thin-context behavior should be outcome-first and honest about missing grounding",
+          "support explicit quick versus deep question budgets instead of one implicit question count strategy",
+          "provenance should be visible in the UI and tool results"
         ]
       },
       "decisions": {
         "command": "/grill-me",
         "commandArgs": {
-          "mode": "optional freeform focus string",
+          "focus": "optional freeform focus string",
+          "artifactHints": "prefer @mentioned files where the command surface allows; raw file path parsing is an acceptable fallback UX",
+          "notes": [
+            "do not assume a default artifact set",
+            "mentioned files should be read in full before deeper question generation when feasible",
+            "exact slash-command parsing for mentions can follow pi command-surface constraints"
+          ],
           "examples": [
             "/grill-me",
-            "/grill-me api auth edge cases",
-            "/grill-me clarify MVP scope"
+            "/grill-me clarify README goals",
+            "/grill-me refine the extension behavior using @plan.json and @PRD.md"
           ]
         },
         "tool": {
           "name": "grill_me",
-          "purpose": "let the agent ask the user structured clarification questions instead of emitting a large question block in chat",
+          "purpose": "let the agent ask the user a single grounded clarification round instead of emitting a large question block in chat",
           "focusArg": "optional freeform focus string supplied by the agent",
+          "modeArg": "optional quick | deep question budget selector",
+          "artifactsArg": "optional list of explicit file or artifact paths to ground on before generation",
+          "definitionArg": "optional injected questionnaire definition; bypasses grounding and generation entirely",
           "resultDelivery": "returns structured answers as the tool result in the same turn"
         },
         "invocationModes": {
-          "manualCommand": "user runs /grill-me [focus] and submitted answers are sent back into the active session as a normal user message",
-          "agentTool": "agent calls grill_me during a turn and receives structured answers as the tool result without sendUserMessage"
+          "manualCommand": "user runs /grill-me with optional focus and artifact hints; submitted answers are sent back into the active session as a normal user message",
+          "agentTool": "agent calls grill_me with optional focus, mode, artifacts, or definition and receives structured answers as the tool result without sendUserMessage"
         },
         "questionSource": {
-          "directDefinitionInjection": "first-class for future planner and workflow integrations",
-          "generatedFromContext": "first-class for /grill-me and grill_me in the expanded part 1 scope",
-          "manualFocusArg": "include optional /grill-me arg as an explicit focus signal",
-          "agentFocusArg": "allow the tool call to pass a focus string to steer question generation",
-          "fallback": "use the bundled default questionnaire only when generation or direct injection cannot produce a sensible targeted set"
+          "precedence": [
+            "provided definition bypasses grounding and generation",
+            "explicit artifacts plus session context",
+            "session context alone when sufficient",
+            "thin-context exploratory or outcome-first generation when grounding is insufficient",
+            "bundled default questionnaire only as a last-resort fallback"
+          ],
+          "defaultArtifactSet": "none",
+          "artifactGrounding": "only explicitly mentioned or provided files should be auto-read",
+          "sessionContext": "always eligible grounding input when available",
+          "thinContextPolicy": "if grounding is insufficient, ask exploratory or outcome-first questions instead of pretending to know unseen artifacts",
+          "fileSpecificQuestionRule": "do not ask file-specific questions unless those files were actually read or summarized into context"
+        },
+        "grounding": {
+          "sources": [
+            "provided definition",
+            "explicit artifacts",
+            "session context",
+            "thin-context exploratory grounding",
+            "fallback questionnaire"
+          ],
+          "artifactScope": "no convention-based default artifact loading",
+          "explorationPolicy": "when context is thin, explore or ask for grounding before deeper artifact-specific questions"
         },
         "questionGeneration": {
           "shape": "generated questions must match the shared questionnaire schema",
-          "targetCount": "prefer a short focused set, usually 3 to 7 questions, instead of a large survey",
+          "targetCountByMode": {
+            "quick": "prefer 1 to 3 questions",
+            "deep": "prefer 4 to 6 questions"
+          },
           "qualityBar": [
-            "questions should be specific to the current task or ambiguity",
-            "questions should avoid asking for information already present in the session",
-            "questions should be ordered to minimize scrolling and context switching",
-            "questions should remain answerable as single-line responses in v1"
+            "questions should be specific to the current task, artifacts, or ambiguity",
+            "questions should avoid asking for information already present in the grounded context",
+            "questions should remain answerable in a compact terminal flow",
+            "when context is thin, bias the first question toward intended outcome or missing grounding",
+            "do not ask file-specific questions unless those files were actually loaded or summarized"
           ]
         },
         "questionSchema": {
@@ -148,25 +183,41 @@
             "recommendation"
           ],
           "notes": [
-            "multiline is allowed in schema for forward compatibility but ignored in v1 UI",
+            "multiline remains available in the schema for forward compatibility",
             "recommendation is optional and only shown when present"
           ]
         },
         "manualCommandBehavior": {
           "requiresIdle": true,
-          "questionnaireSource": "generate from current context plus optional arg, with bundled fallback only as a backup",
+          "questionnaireSource": "use provided definition if injected; otherwise ground on explicitly mentioned artifacts plus session context when possible, fall back to thin-context exploratory questions when necessary, and use the bundled questionnaire only as a last resort",
+          "roundShape": "single grounded questionnaire round",
           "submitFlow": "send a wrapped JSON payload back into the active pi session as a normal user message"
         },
         "agentToolBehavior": {
-          "questionnaireSource": "generate from current context plus optional tool focus arg, with bundled fallback only as a backup",
+          "questionnaireSource": "use provided definition if passed; otherwise ground on explicit artifacts plus session context, with honest thin-context generation before fallback",
+          "roundShape": "single grounded questionnaire round",
           "submitFlow": "return structured answers as the tool result in the same turn so the agent can continue immediately"
         },
+        "followupPolicy": {
+          "ownership": "grill_me itself runs one grounded questionnaire round",
+          "workflowControl": "additional rounds are decided explicitly by the user, agent, or workflow outside the extension rather than by a hidden autonomous loop",
+          "recommendedPractice": "one to two rounds is typical; larger planning tasks may justify a third round, but that remains workflow policy rather than hardcoded extension behavior"
+        },
         "answerBehavior": {
-          "singleLineOnly": true,
+          "singleValueStrings": true,
           "enter": "save current answer and advance to next question",
           "shiftTab": "go to previous question",
           "escape": "close questionnaire and keep current temp draft",
           "leftRight": "normal text editing"
+        },
+        "inputUX": {
+          "editingSurface": "replace the current horizontal-scrolling input with a wrapped editor-like input",
+          "longAnswers": "long answers must remain visible and editable without text disappearing off-screen",
+          "artifactMentions": "support @mention affordances for artifact hints where applicable in pi TUI surfaces",
+          "notes": [
+            "answers may still serialize as strings in v1 even when the editor surface is visually wrapped",
+            "input UX should feel native inside pi rather than like a single-line terminal prompt"
+          ]
         },
         "reviewBehavior": {
           "mode": "review list with native up/down selection",
@@ -193,6 +244,23 @@
           "keepOnSubmit": false,
           "deleteAfterSuccessfulHandoff": true,
           "keepOnHandoffFailure": true
+        },
+        "provenance": {
+          "surfaceInUI": true,
+          "surfaceInToolDetails": true,
+          "fields": [
+            "source",
+            "grounding",
+            "artifactsUsed",
+            "contextSufficiency"
+          ],
+          "values": [
+            "provided definition",
+            "explicit artifacts",
+            "session context",
+            "thin-context generation",
+            "fallback questionnaire"
+          ]
         },
         "submitBehavior": {
           "manualCommand": {
@@ -299,7 +367,10 @@
         "tests/unit/grill-me-generator.test.ts",
         "tests/integration/grill-me-command.test.ts",
         "tests/integration/grill-me-submit.test.ts",
-        "tests/integration/grill-me-tool.test.ts"
+        "tests/integration/grill-me-tool.test.ts",
+        ".pi/extensions/grill-me/grounding.ts",
+        "tests/unit/grill-me-grounding.test.ts",
+        "tests/integration/grill-me-provenance.test.ts"
       ],
       "workItems": [
         {
@@ -393,12 +464,12 @@
         },
         {
           "id": "G007",
-          "title": "Add question source abstraction and context-aware generation",
-          "status": "planned",
+          "title": "Add session-context-aware generation with provided-definition bypass",
+          "status": "complete",
           "dependsOn": [
             "G006"
           ],
-          "goal": "Build a generator that reads the current session context plus an optional focus string and produces a short targeted questionnaire matching the shared schema. Treat direct definition injection and generated definitions as first-class, and use the bundled default questionnaire only as a fallback.",
+          "goal": "Generate a short targeted questionnaire from session context plus optional focus when no explicit definition is supplied. Keep provided definition injection first-class, and use the bundled default questionnaire only as a fallback.",
           "files": [
             ".pi/extensions/grill-me/generator.ts",
             ".pi/extensions/grill-me/questions.ts",
@@ -410,7 +481,7 @@
         {
           "id": "G008",
           "title": "Add agent-callable grill_me clarification tool",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G007"
           ],
@@ -425,11 +496,11 @@
         {
           "id": "G009",
           "title": "Expand /grill-me to accept optional focus args and generated questions",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G007"
           ],
-          "goal": "Change /grill-me from preset-first behavior to context-aware generation, incorporate optional user-supplied focus text, and keep the existing idle-only behavior and manual submit-as-user-message flow.",
+          "goal": "Use context-aware generation for /grill-me, incorporate optional user-supplied focus text, and keep the existing idle-only behavior and manual submit-as-user-message flow.",
           "files": [
             ".pi/extensions/grill-me/index.ts",
             ".pi/extensions/grill-me/generator.ts",
@@ -440,7 +511,7 @@
         {
           "id": "G010",
           "title": "Make submit and cleanup semantics failure-safe",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G008",
             "G009"
@@ -457,7 +528,7 @@
         {
           "id": "G011",
           "title": "Debounce draft persistence while force-flushing on navigation boundaries",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G004"
           ],
@@ -473,7 +544,7 @@
         {
           "id": "G012",
           "title": "Teach the agent to prefer grill_me over long clarification blocks",
-          "status": "planned",
+          "status": "complete",
           "dependsOn": [
             "G008"
           ],
@@ -481,6 +552,90 @@
           "files": [
             ".pi/extensions/grill-me/index.ts",
             "tests/integration/grill-me-tool.test.ts"
+          ]
+        },
+        {
+          "id": "G013",
+          "title": "Add artifact-aware grounding from explicit mentions and tool artifacts",
+          "status": "planned",
+          "dependsOn": [
+            "G007",
+            "G008",
+            "G009"
+          ],
+          "goal": "Before deeper question generation, read explicitly mentioned or provided artifacts and combine them with session context. Do not introduce a convention-based default artifact set.",
+          "files": [
+            ".pi/extensions/grill-me/index.ts",
+            ".pi/extensions/grill-me/generator.ts",
+            ".pi/extensions/grill-me/grounding.ts",
+            ".pi/extensions/grill-me/types.ts",
+            "tests/unit/grill-me-grounding.test.ts",
+            "tests/integration/grill-me-command.test.ts",
+            "tests/integration/grill-me-tool.test.ts"
+          ]
+        },
+        {
+          "id": "G014",
+          "title": "Detect thin context and switch to exploratory or outcome-first questioning",
+          "status": "planned",
+          "dependsOn": [
+            "G013"
+          ],
+          "goal": "If the session is fresh or grounding is insufficient, avoid pretending to know unseen files. Ask grounding or outcome-first questions instead of artifact-specific questions until enough context exists.",
+          "files": [
+            ".pi/extensions/grill-me/generator.ts",
+            ".pi/extensions/grill-me/grounding.ts",
+            "tests/unit/grill-me-generator.test.ts",
+            "tests/unit/grill-me-grounding.test.ts"
+          ]
+        },
+        {
+          "id": "G015",
+          "title": "Add quick and deep modes for bounded question budgets",
+          "status": "planned",
+          "dependsOn": [
+            "G013"
+          ],
+          "goal": "Support explicit quick versus deep question budgets for both the slash command and the grill_me tool while keeping definition injection as a direct bypass path.",
+          "files": [
+            ".pi/extensions/grill-me/index.ts",
+            ".pi/extensions/grill-me/generator.ts",
+            ".pi/extensions/grill-me/types.ts",
+            "tests/unit/grill-me-generator.test.ts",
+            "tests/integration/grill-me-command.test.ts",
+            "tests/integration/grill-me-tool.test.ts"
+          ]
+        },
+        {
+          "id": "G016",
+          "title": "Expose grounding provenance in UI and tool results",
+          "status": "planned",
+          "dependsOn": [
+            "G013",
+            "G014"
+          ],
+          "goal": "Surface what the questionnaire was based on, including provided definition, explicit artifacts, session context, thin-context generation, or fallback, so the operator can judge how grounded the questions are.",
+          "files": [
+            ".pi/extensions/grill-me/index.ts",
+            ".pi/extensions/grill-me/questionnaire.ts",
+            ".pi/extensions/grill-me/types.ts",
+            "tests/integration/grill-me-tool.test.ts",
+            "tests/integration/grill-me-provenance.test.ts"
+          ]
+        },
+        {
+          "id": "G017",
+          "title": "Upgrade the answer input to a wrapped editor-like surface",
+          "status": "planned",
+          "dependsOn": [
+            "G004"
+          ],
+          "goal": "Replace the current horizontal-scrolling answer input with a wrapped editor-like experience so longer answers remain visible and editable, and support artifact mention affordances where the pi TUI surface allows.",
+          "files": [
+            ".pi/extensions/grill-me/ui.ts",
+            ".pi/extensions/grill-me/questionnaire.ts",
+            "tests/unit/grill-me-ui-state.test.ts",
+            "tests/unit/grill-me-questionnaire.test.ts"
           ]
         }
       ],
