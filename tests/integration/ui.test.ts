@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { stripVTControlCharacters } from 'node:util';
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import type { ExtensionUIContext, Theme } from '@earendil-works/pi-coding-agent';
-import { type Component, type TUI, visibleWidth } from '@earendil-works/pi-tui';
+import { CombinedAutocompleteProvider, type Component, type TUI, visibleWidth } from '@earendil-works/pi-tui';
 import { normalizeQuestions, type AskParams, type AskResult } from '../../extensions/ask/model.ts';
 import { runAskUi } from '../../extensions/ask/ui.ts';
 
@@ -39,7 +39,7 @@ async function open(questions: AskParams['questions'] = [question]) {
       Promise.resolve(created).then((view) => { component = view; });
     }),
   };
-  const completion = runAskUi(ui, normalizeQuestions(questions));
+  const completion = runAskUi(ui, normalizeQuestions(questions), process.cwd());
   await Promise.resolve();
   assert.ok(component);
   const view = component;
@@ -48,6 +48,7 @@ async function open(questions: AskParams['questions'] = [question]) {
     completed: () => completed,
     press: (...keys: string[]) => keys.forEach((key) => view.handleInput?.(key)),
     render: (width = 80) => { view.invalidate(); return view.render(width); },
+    renderWithoutInvalidation: () => view.render(80),
   };
 }
 
@@ -107,6 +108,35 @@ test('out-of-scope is explicit; cancellation retains but does not submit partial
   const cancelled = await batch.completion;
   assert.equal(cancelled.cancelled, true);
   assert.equal(cancelled.answers.length, 1);
+});
+
+test('async file menu renders without invalidation; Enter completes before submitting', async () => {
+  vi.spyOn(CombinedAutocompleteProvider.prototype, 'getSuggestions').mockResolvedValue({
+    prefix: '@REA', items: [{ value: '@README.md', label: 'README.md' }],
+  });
+  const screen = await open();
+  screen.press('4', '@REA');
+  screen.renderWithoutInvalidation();
+  await vi.waitFor(() => assert.match(screen.renderWithoutInvalidation().join('\n'), /README.md/));
+  screen.press(enter);
+  assert.equal(screen.completed(), undefined);
+  screen.press(enter);
+  assert.match((await screen.completion).answers[0]?.value ?? '', /@README.md/);
+});
+
+test('Escape dismisses the completion menu before leaving the custom editor', async () => {
+  vi.spyOn(CombinedAutocompleteProvider.prototype, 'getSuggestions').mockResolvedValue({
+    prefix: '@REA', items: [{ value: '@README.md', label: 'README.md' }],
+  });
+  const screen = await open();
+  screen.press('4', '@REA');
+  await vi.waitFor(() => assert.match(screen.renderWithoutInvalidation().join('\n'), /README.md/));
+  screen.press(escape);
+  assert.match(screen.renderWithoutInvalidation().join('\n'), /Custom answer/);
+  screen.press(escape);
+  assert.doesNotMatch(screen.renderWithoutInvalidation().join('\n'), /Custom answer/);
+  screen.press(escape);
+  assert.equal((await screen.completion).cancelled, true);
 });
 
 test('narrow and wide renders fit their terminal widths, including custom editor', async () => {

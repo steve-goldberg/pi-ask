@@ -53,6 +53,13 @@ you. The skill is optional: agents can call `ask` directly for a single batch.
 - Optional tab labels have a 16-character limit; option labels have a
   60-character limit. Invalid input is rejected, not truncated.
 - The UI always adds **Out of scope** and a **custom answer** editor.
+  In the custom editor, type `@` to search files relative to Pi's session working
+  directory. Tab or Enter accepts a suggestion; Enter again submits the answer.
+  Escape dismisses suggestions before returning to options. File mentions are
+  returned as text; the tool does not read or attach file contents.
+  Fuzzy `@` search uses `fd`/`fdfind` from Pi's agent `bin` directory or PATH.
+  Without it, ordinary path completion (such as `./README`) still works; install
+  `fd` for fuzzy mentions. No binary is downloaded by this tool.
 - A single question submits when answered. Batches use question tabs and a
   review/submit tab; answers can be revisited before submission.
 - Arrow keys move, number keys select, and Space toggles multiple choices.
@@ -80,14 +87,16 @@ This is an intentional replacement, not a compatibility layer:
 - `ask({ definition: ... })` is replaced by `ask({ questions: ... })` above.
 - Text-only questions become choices with a custom-answer escape hatch.
 - The old `/ask` command is removed; use the tool or `/skill:grill`.
-- Temporary drafts, file-mention autocomplete, hidden grounding/generation,
-  and the old runtime are removed. No old data is automatically migrated.
+- Temporary drafts, hidden grounding/generation, and the old runtime are removed.
+  File-mention autocomplete is retained in the custom-answer editor. No old data
+  is automatically migrated.
 - Old planning trackers and Ralph files are removed from this branch; their
   history remains in Git. The dirty `ask-skill-refactor` worktree is separate.
 
 The questionnaire is extracted from Sideroom 8.8.0. Its selection, validation,
-submission, and cancellation behavior is retained; its tool is renamed `ask`
-and its unrelated prompt directives are removed. See [NOTICE.md](NOTICE.md).
+submission, and cancellation behavior is retained; its tool is renamed `ask`,
+its unrelated prompt directives are removed, and custom answers gain file
+completion. See [NOTICE.md](NOTICE.md).
 
 ## Development
 

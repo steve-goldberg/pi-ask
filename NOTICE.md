@@ -9,6 +9,7 @@ The upstream MIT license and copyright notice are retained in `LICENSE`.
 
 Extraction changes: renamed `sideroom_ask` to `ask`, removed required external
 skills and unrelated workflow directives, made `grill` self-contained and
-conversation-only by default, and adapted/extended tests for this repository.
+conversation-only by default, added session-relative file autocomplete to custom
+answers, and adapted/extended tests for this repository.
 No other Sideroom extensions or skills are included. Future upstream fixes can
 be compared against the recorded commit without merging the entire package.

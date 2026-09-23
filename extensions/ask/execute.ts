@@ -16,7 +16,7 @@ interface AskToolResult {
 
 export async function executeAsk(
   params: AskParams,
-  ctx: Pick<ExtensionContext, 'mode' | 'ui'>,
+  ctx: Pick<ExtensionContext, 'mode' | 'ui' | 'cwd'>,
 ): Promise<AskToolResult> {
   const parsed = parseAskParams(params);
   if (!parsed.ok) {
@@ -26,7 +26,7 @@ export async function executeAsk(
     return cancelledResult(UI_UNAVAILABLE, parsed.questions);
   }
 
-  const result = await runAskUi(ctx.ui, parsed.questions);
+  const result = await runAskUi(ctx.ui, parsed.questions, ctx.cwd);
   if (result.cancelled) {
     return {
       content: [{ type: 'text', text: 'User cancelled the questionnaire' }],

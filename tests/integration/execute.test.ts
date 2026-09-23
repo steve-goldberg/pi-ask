@@ -22,9 +22,10 @@ const sampleParams: AskParams = {
 function context(
   mode: ExtensionContext['mode'],
   result?: AskResult,
-): Pick<ExtensionContext, 'mode' | 'ui'> {
+): Pick<ExtensionContext, 'mode' | 'ui' | 'cwd'> {
   return {
     mode,
+    cwd: process.cwd(),
     ui: {
       custom: (async () => {
         if (result === undefined) {

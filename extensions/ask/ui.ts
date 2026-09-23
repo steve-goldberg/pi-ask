@@ -16,10 +16,12 @@ import {
   renderOptions,
 } from './model.ts';
 import { answerFromSelections, toggleSelection } from './selection.ts';
+import { createAnswerAutocomplete } from './autocomplete.ts';
 
 export async function runAskUi(
   ui: Pick<ExtensionUIContext, 'custom'>,
   questions: readonly AskQuestion[],
+  cwd: string,
 ): Promise<AskResult> {
   const isMulti = questions.length > 1;
   const totalTabs = questions.length + 1;
@@ -44,6 +46,7 @@ export async function runAskUi(
       },
     };
     const editor = new Editor(tui, editorTheme);
+    editor.setAutocompleteProvider(createAnswerAutocomplete(cwd));
 
     function refresh(): void {
       cachedLines = undefined;
@@ -256,7 +259,7 @@ export async function runAskUi(
 
     function handleInput(data: string): void {
       if (inputMode) {
-        if (matchesKey(data, Key.escape)) {
+        if (matchesKey(data, Key.escape) && !editor.isShowingAutocomplete()) {
           inputMode = false;
           inputQuestionId = null;
           editor.setText('');
@@ -336,7 +339,8 @@ export async function runAskUi(
     }
 
     function render(width: number): string[] {
-      if (cachedLines !== undefined) {
+      // The editor's asynchronous completion menu can change between keystrokes.
+      if (cachedLines !== undefined && !inputMode) {
         return cachedLines;
       }
 
@@ -441,7 +445,7 @@ export async function runAskUi(
         lines.push('');
         addWrappedWithPrefix(
           ' ',
-          theme.fg('dim', 'Enter save · Esc back to options'),
+          theme.fg('dim', 'Tab autocomplete · @ file mentions · Enter save · Esc back'),
         );
       } else if (currentTab === questions.length) {
         for (const entry of questions) {
@@ -527,6 +531,7 @@ export async function runAskUi(
       render,
       invalidate: () => {
         cachedLines = undefined;
+        editor.invalidate();
       },
       handleInput,
     };

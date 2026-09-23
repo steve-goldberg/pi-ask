@@ -20,7 +20,7 @@ exports[`custom answers use the real editor; escape backs out without submitting
  Only internal testers
  ──────────────────────────────────────────────────────────────────────────────
 
- Enter save · Esc back to options
+ Tab autocomplete · @ file mentions · Enter save · Esc back
 ────────────────────────────────────────────────────────────────────────────────"
 `;
 
