@@ -48,6 +48,6 @@ test('package exposes exactly one tool entry and one self-contained skill', () =
   assert.match(skill, /`ask` tool/);
   assert.match(skill, /Wait for\s+the returned answers/);
   assert.match(skill, /cancelled, stop the interview/);
-  assert.match(skill, /only when the user explicitly requests it/);
+  assert.match(skill, /Create or update files only\s+when the user requests it/);
   assert.doesNotMatch(skill, /sideroom-|references\//);
 });

@@ -53,12 +53,8 @@ context, ask only unresolved questions through `ask`, then summarize agreement.
 </question_quality>
 
 <output_boundary>
-
-Keep the interview and its summary in the conversation. Do not automatically
-write CONTEXT.md, ADRs, specs, task boards, or any other artifact. Write an
-artifact only when the user explicitly requests it, using their requested
-format and location. Do not impose coding guidelines, a persona, completion
-checks, or any workflow beyond clarification.
+Summarize the interview in the conversation. Create or update files only
+when the user requests it.
 </output_boundary>
 
 <success_criteria>
