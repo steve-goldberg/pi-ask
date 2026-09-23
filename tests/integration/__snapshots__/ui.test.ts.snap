@@ -1,0 +1,58 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`batch requires every answer, permits revision, then explicitly submits 1`] = `
+"────────────────────────────────────────────────────────────────────────────────
+  ● Scope   ● Timing   Submit
+
+ Scope: One team
+ Timing: Everyone
+
+ Enter send answers · Esc cancel
+────────────────────────────────────────────────────────────────────────────────"
+`;
+
+exports[`custom answers use the real editor; escape backs out without submitting 1`] = `
+"────────────────────────────────────────────────────────────────────────────────
+ Who should receive the first rollout?
+
+ Custom answer
+ ──────────────────────────────────────────────────────────────────────────────
+ Only internal testers
+ ──────────────────────────────────────────────────────────────────────────────
+
+ Tab autocomplete · @ file mentions · Enter save · Esc back
+────────────────────────────────────────────────────────────────────────────────"
+`;
+
+exports[`multiple selection requires an explicit choice and supports toggling 1`] = `
+"────────────────────────────────────────────────────────────────────────────────
+ Who should receive the first rollout?
+ Current: Everyone
+
+> [ ] 1. One team recommended
+     Limit risk while validating.
+  [x] 2. Everyone
+     Broader feedback, larger impact.
+
+  3. Out of scope
+  4. Write a custom answer
+
+ ↑↓ or 1–4 toggle · Space toggle · Enter confirm · Esc cancel
+────────────────────────────────────────────────────────────────────────────────"
+`;
+
+exports[`single question renders only the questionnaire and submits the selected value 1`] = `
+"────────────────────────────────────────────────────────────────────────────────
+ Who should receive the first rollout?
+
+> 1. One team recommended
+     Limit risk while validating.
+  2. Everyone
+     Broader feedback, larger impact.
+
+  3. Out of scope
+  4. Write a custom answer
+
+ ↑↓ or 1–4 · Enter select · Esc cancel
+────────────────────────────────────────────────────────────────────────────────"
+`;

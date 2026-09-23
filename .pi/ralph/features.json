@@ -1,8 +1,0 @@
-{
-  "schemaVersion": 1,
-  "name": "project-name",
-  "description": "Template manifest consumed by the Ralph extension. Populate roles, testTypes, and features for your project.",
-  "roles": {},
-  "testTypes": {},
-  "features": []
-}

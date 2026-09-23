@@ -1,26 +1,51 @@
 {
   "name": "ask",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "description": "A Pi question tool and an optional conversation-only grill skill.",
+  "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "files": [
+    "extensions/ask/*.ts",
+    "skills/grill/SKILL.md",
+    "LICENSE",
+    "NOTICE.md",
+    "README.md"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/ask/index.ts"
+    ],
+    "skills": [
+      "./skills/grill"
+    ]
+  },
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration"
+    "test:integration": "vitest run tests/integration",
+    "check": "npm run lint && npm run typecheck && npm test"
   },
-  "dependencies": {
-    "@mariozechner/pi-coding-agent": "^0.66.1",
-    "@mariozechner/pi-tui": "^0.66.1"
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
   },
   "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.84.4",
+    "@earendil-works/pi-tui": "0.84.4",
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.6.0",
     "@typescript-eslint/eslint-plugin": "^8.58.1",
     "@typescript-eslint/parser": "^8.58.1",
     "eslint": "^10.2.0",
+    "typebox": "^1.1.39",
     "typescript": "^5.7.3",
-    "vitest": "^3.2.4"
+    "vitest": "^5.0.1"
   }
 }
