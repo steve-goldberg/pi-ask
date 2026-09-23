@@ -9,17 +9,40 @@ hooks.
 Requires Node 22.19+ and Pi with the current `@earendil-works` extension API
 (tested with Pi 0.84.4).
 
+Install directly from GitHub—no npm account required.
+
+Pin to a release:
+
 ```sh
-npm ci
-pi install /absolute/path/to/ask-sideroom
+pi install git:github.com/steve-goldberg/pi-ask@v0.11
 ```
 
-Start a new Pi session or reload after installation. Disable the old ask
-extension and the full Sideroom package if installed: this package replaces
-rather than configures them. Existing sessions keep their loaded extensions
-until reloaded; installing Ask does not remove another package's board.
+Or install from the default branch to receive updates:
 
-For a temporary tool-only trial:
+```sh
+pi install git:github.com/steve-goldberg/pi-ask
+```
+
+Update an unpinned installation:
+
+```sh
+pi update git:github.com/steve-goldberg/pi-ask
+```
+
+Start a new Pi session or run `/reload` after installation or updates. Disable
+any older `ask` extension to avoid duplicate tool registrations. Installations
+are user-wide by default; add `-l` to `pi install` for a project-local install.
+
+For local development, clone the repository and install from its directory:
+
+```sh
+git clone https://github.com/steve-goldberg/pi-ask.git
+cd pi-ask
+npm ci
+pi install "$PWD"
+```
+
+For a temporary tool-only trial from the cloned repository:
 
 ```sh
 pi -e ./extensions/ask/index.ts
@@ -90,13 +113,8 @@ This is an intentional replacement, not a compatibility layer:
 - Temporary drafts, hidden grounding/generation, and the old runtime are removed.
   File-mention autocomplete is retained in the custom-answer editor. No old data
   is automatically migrated.
-- Old planning trackers and Ralph files are removed from this branch; their
-  history remains in Git. The dirty `ask-skill-refactor` worktree is separate.
 
-The questionnaire is extracted from Sideroom 8.8.0. Its selection, validation,
-submission, and cancellation behavior is retained; its tool is renamed `ask`,
-its unrelated prompt directives are removed, and custom answers gain file
-completion. See [NOTICE.md](NOTICE.md).
+See [NOTICE.md](NOTICE.md) for third-party attribution.
 
 ## Development
 
