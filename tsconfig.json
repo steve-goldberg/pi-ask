@@ -5,6 +5,7 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -14,7 +15,7 @@
     "types": ["node", "vitest/globals"]
   },
   "include": [
-    ".pi/extensions/**/*.ts",
+    "extensions/**/*.ts",
     "tests/**/*.ts",
     "eslint.config.js",
     "vitest.config.ts"
